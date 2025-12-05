@@ -8,8 +8,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import java.security.SecureRandom;
 
 public class UDPServer {
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final SecureRandom random = new SecureRandom();
+
+    private static final String SALT = genSK(32);
+    private static final String KEY = genSK(32);
+
     public static void main(String[] args) {
         Scanner portSc = new Scanner(System.in);
         System.out.println("Port:");
@@ -65,6 +72,7 @@ public class UDPServer {
                 if (type.equals("join")) {
                     userMap.put(clientID, data);
                     System.out.println("User " + data + " joined");
+                    sendSK(serverSocket, clientID);
                     broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
                     broadcastUserList(serverSocket, userMap);
                 } else if (type.equals("chat")) {
@@ -103,5 +111,25 @@ public class UDPServer {
     public static void broadcastUserList(DatagramSocket serverSocket, Map<String, String> userMap) throws IOException {
         String list = String.join(",", userMap.values());
         broadcast(serverSocket, userMap, "users|" + list);
+    }
+    public static void sendSK(DatagramSocket serverSocket, String clientID) throws IOException {
+        String[] parts = clientID.split(":");
+        InetAddress clientAddress = InetAddress.getByName(parts[0].replace("/", ""));
+        int clientPort = Integer.parseInt(parts[1]);
+
+        String SK = UDPClient.SALT + "|" + UDPClient.KEY;
+        String data = "sk|" + SK;
+
+        byte[] sendData = data.getBytes();
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientAddress, clientPort);
+        serverSocket.send(sendPacket);
+    }
+    public static String genSK(int length) {
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(CHARACTERS.length());
+            sb.append(CHARACTERS.charAt(index));
+        }
+        return sb.toString();
     }
 }

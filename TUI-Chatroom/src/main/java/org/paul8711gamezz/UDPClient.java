@@ -8,8 +8,12 @@ import java.io.IOException;
 
 // other imports
 import java.util.Scanner;
+import static org.paul8711gamezz.AESUnicode.encrypt;
+import static org.paul8711gamezz.AESUnicode.decrypt;
 
 public class UDPClient {
+    public static String KEY;
+    public static String SALT;
     public static void main(String[] args) {
         Scanner ipSc = new Scanner(System.in);
         System.out.println("IP:");
@@ -68,7 +72,7 @@ public class UDPClient {
                     clientSocket.close();
                     System.exit(0);
                 }
-                client_send(IP, port, clientSocket, "chat", message);
+                client_send(IP, port, clientSocket, "chat", encrypt(message, UDPClient.SALT, UDPClient.KEY));
             }
         } else {
             System.out.println("Not connected");
@@ -114,15 +118,15 @@ public class UDPClient {
             String[] splitMessage = response.split("\\|", 2);
             String type = splitMessage[0];
             String data = splitMessage[1];
-            /*
-            UNUSED
-            switch (type) {
-                case "join" -> System.out.println(data);
-                case "chat" -> System.out.println(data);
-                case "users" -> System.out.println(data);
-                case "leave" -> System.out.println(data);
+            if (type.equals("chat")) {
+                String[] splitData = data.split(": ", 2);
+                String message = splitData[1];
+                return decrypt(message, UDPClient.SALT, UDPClient.KEY);
+            } else if (type.equals("sk")) {
+                String[] splitSK = data.split("\\|", 2);
+                UDPClient.SALT = splitSK[0];
+                UDPClient.KEY = splitSK[1];
             }
-             */
             return data;
         } catch (Exception e) {
             e.printStackTrace();
