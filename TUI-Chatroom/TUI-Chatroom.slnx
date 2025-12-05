@@ -1,7 +1,0 @@
-<Solution>
-  <Configurations>
-    <Platform Name="x64" />
-    <Platform Name="x86" />
-  </Configurations>
-  <Project Path="TUI-Chatroom/TUI-Chatroom.vcxproj" Id="9a159477-0255-4e92-82f7-ffc0e1a38199" />
-</Solution>
