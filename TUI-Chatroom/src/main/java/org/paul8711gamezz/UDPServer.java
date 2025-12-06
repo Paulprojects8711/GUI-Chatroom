@@ -4,10 +4,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 import java.security.SecureRandom;
 
 public class UDPServer {
@@ -17,14 +14,22 @@ public class UDPServer {
     private static final String SALT = genSK(32);
     private static final String KEY = genSK(32);
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         Scanner portSc = new Scanner(System.in);
         System.out.println("Port:");
         int port = Integer.parseInt(portSc.nextLine());
 
-        server(port);
+        Scanner keySc = new Scanner(System.in);
+        System.out.println("Set Auth Key:");
+        String authKey = keySc.nextLine();
+
+        if (!authKey.isEmpty()) {
+            server(port, Hash.hash(authKey));
+        } else {
+            server(port, "");
+        }
     }
-    public static void server(int port) {
+    public static void server(int port, String authKeyHash) {
         try {
             DatagramSocket serverSocket = new DatagramSocket(port);
             System.out.println("Server started on Port " + port);
@@ -32,6 +37,7 @@ public class UDPServer {
             Map<String, Long> lastSeen = new HashMap<>();
 
             byte[] receiveData = new byte[1024];
+            Map<String, String> lastSent = new HashMap<>(); // <clientID, lastMessageSent>
 
             new Thread(() -> {
                 try {
@@ -40,6 +46,12 @@ public class UDPServer {
                         long now = System.currentTimeMillis();
                         for (String clientID : new ArrayList<>(lastSeen.keySet())) {
                             if (now - lastSeen.get(clientID) > 15000) { // 15 sec timeout
+                                String lastMessage = lastSent.get(clientID);
+                                if (lastMessage.equals("auth|request")) {
+                                    // dont kick
+                                    lastSeen.put(clientID, now);
+                                    continue;
+                                }
                                 String username = userMap.get(clientID);
                                 if (username != null) {
                                     userMap.remove(clientID);
@@ -70,11 +82,32 @@ public class UDPServer {
                 String data = splitMessage[1];
 
                 if (type.equals("join")) {
-                    userMap.put(clientID, data);
-                    System.out.println("User " + data + " joined");
-                    sendSK(serverSocket, clientID);
-                    broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
-                    broadcastUserList(serverSocket, userMap);
+                    if (!userMap.containsValue(data)) {
+                        userMap.put(clientID, data);
+                        lastSeen.put(clientID, System.currentTimeMillis());
+                        if (!authKeyHash.isEmpty()) {
+                            sendToSingle(serverSocket, clientID, "auth|request", lastSent);
+                        } else {
+                            System.out.println("User " + data + " joined");
+                            sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
+                            broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
+                            broadcastUserList(serverSocket, userMap);
+                        }
+                    } else {
+                        sendToSingle(serverSocket, clientID, "err|" + "Username already in use", lastSent);
+                    }
+                } else if (type.equals("auth")) {
+                    if (!Hash.verify(data, authKeyHash)) {
+                        sendToSingle(serverSocket, clientID, "auth|wrong", lastSent);
+                        userMap.remove(clientID);
+                        lastSeen.remove(clientID);
+                    } else {
+                        sendToSingle(serverSocket, clientID, "auth|ok", lastSent);
+                        System.out.println("User " + userMap.get(clientID) + " joined");
+                        sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
+                        broadcast(serverSocket, userMap, "join|" + "User " + userMap.get(clientID) + " joined");
+                        broadcastUserList(serverSocket, userMap);
+                    }
                 } else if (type.equals("chat")) {
                     String username = userMap.get(clientID);
                     lastSeen.put(clientID, System.currentTimeMillis());
@@ -89,10 +122,13 @@ public class UDPServer {
                     }
                 } else if (type.equals("ping")) {
                     lastSeen.put(clientID, System.currentTimeMillis());
+                    sendToSingle(serverSocket, clientID, "pong|", lastSent);
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
     public static void broadcast(DatagramSocket serverSocket, Map<String, String> userMap, String message) throws IOException {
@@ -112,17 +148,16 @@ public class UDPServer {
         String list = String.join(",", userMap.values());
         broadcast(serverSocket, userMap, "users|" + list);
     }
-    public static void sendSK(DatagramSocket serverSocket, String clientID) throws IOException {
+    public static void sendToSingle(DatagramSocket serverSocket, String clientID, String message, Map<String, String> lastSent) throws IOException {
         String[] parts = clientID.split(":");
         InetAddress clientAddress = InetAddress.getByName(parts[0].replace("/", ""));
         int clientPort = Integer.parseInt(parts[1]);
 
-        String SK = UDPClient.SALT + "|" + UDPClient.KEY;
-        String data = "sk|" + SK;
-
-        byte[] sendData = data.getBytes();
+        byte[] sendData = message.getBytes();
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientAddress, clientPort);
         serverSocket.send(sendPacket);
+
+        lastSent.put(clientID, message);
     }
     public static String genSK(int length) {
         StringBuilder sb = new StringBuilder(length);
