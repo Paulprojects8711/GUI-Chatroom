@@ -35,6 +35,7 @@ public class UDPServer {
             System.out.println("Server started on Port " + port);
             Map<String, String> userMap = new HashMap<>();
             Map<String, Long> lastSeen = new HashMap<>();
+            Map<String, Boolean> vcStatus = new HashMap<>();
 
             byte[] receiveData = new byte[1024];
             Map<String, String> lastSent = new HashMap<>(); // <clientID, lastMessageSent>
@@ -56,6 +57,7 @@ public class UDPServer {
                                 if (username != null) {
                                     userMap.remove(clientID);
                                     lastSeen.remove(clientID);
+                                    vcStatus.remove(clientID);
                                     broadcast(serverSocket, userMap, "leave|" + username + " disconnected (timeout)");
                                     broadcastUserList(serverSocket, userMap);
                                 }
@@ -70,12 +72,25 @@ public class UDPServer {
             while (true) {
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                 serverSocket.receive(receivePacket);
-                String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
-                System.out.println("Received message: " + message);
 
+                byte[] packetData = receivePacket.getData();
+                int packetLength = receivePacket.getLength();
                 InetAddress clientAddress = receivePacket.getAddress();
                 int clientPort = receivePacket.getPort();
                 String clientID = clientAddress.toString() + ":" + clientPort;
+
+                // check if it is a voice packet
+                if (packetLength > 6) {
+                    String header = new String(packetData, 0, 6);
+                    if (header.equals("voice|")) {
+                        // only broadcast to users in VC
+                        broadcastVoice(serverSocket, userMap, vcStatus, clientID, Arrays.copyOf(packetData, packetLength));
+                        continue; // skip the other stuff
+                    }
+                }
+
+                String message = new String(packetData, 0, packetLength);
+                System.out.println("Received message: " + message);
 
                 String[] splitMessage = message.split("\\|", 2);
                 String type = splitMessage[0];
@@ -117,12 +132,21 @@ public class UDPServer {
                     String username = userMap.get(clientID);
                     if (username != null) {
                         userMap.remove(clientID);
+                        vcStatus.remove(clientID);
                         broadcast(serverSocket, userMap, "leave|" + "User " + username + " left");
                         broadcastUserList(serverSocket, userMap);
                     }
                 } else if (type.equals("ping")) {
                     lastSeen.put(clientID, System.currentTimeMillis());
                     sendToSingle(serverSocket, clientID, "pong|", lastSent);
+                } else if (type.equals("vc")) {
+                    if (data.equals("join")) {
+                        vcStatus.put(clientID, true);
+                        broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " joined Voice call");
+                    } else if (data.equals("leave")) {
+                        vcStatus.put(clientID, false);
+                        broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " left Voice call");
+                    }
                 }
             }
         } catch (IOException e) {
@@ -142,6 +166,18 @@ public class UDPServer {
 
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientAddress, clientPort);
             serverSocket.send(sendPacket);
+        }
+    }
+    public static void broadcastVoice(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, Boolean> vcStatus, String senderID, byte[] sendData) throws IOException {
+        for (String clientID : userMap.keySet()) {
+            if (vcStatus.getOrDefault(clientID, false) && !clientID.equals(senderID)) {
+                String[] parts = clientID.split(":");
+                InetAddress clientAddress = InetAddress.getByName(parts[0].replace("/", ""));
+                int clientPort = Integer.parseInt(parts[1]);
+
+                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientAddress, clientPort);
+                serverSocket.send(sendPacket);
+            }
         }
     }
     public static void broadcastUserList(DatagramSocket serverSocket, Map<String, String> userMap) throws IOException {
