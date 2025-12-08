@@ -1,2 +1,2 @@
-# TUI-Chatroom
+# GUI-Chatroom
 An end-to-end encrypted Graphical User Interface Chatroom
