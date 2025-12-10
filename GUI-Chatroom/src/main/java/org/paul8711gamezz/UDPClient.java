@@ -1,6 +1,8 @@
 package org.paul8711gamezz;
 
 // networking imports
+import org.paul8711gamezz.helpers.ClientUIHandler;
+
 import java.net.*;
 
 // other imports
@@ -9,7 +11,7 @@ import java.util.Scanner;
 import javax.sound.sampled.*;
 import java.io.IOException;
 
-import static org.paul8711gamezz.AESUnicode.*;
+import static org.paul8711gamezz.helpers.AESUnicode.*;
 
 public class UDPClient {
     public static SourceDataLine speaker;
@@ -17,6 +19,100 @@ public class UDPClient {
     public static String KEY;
     public static String SALT;
     public static long lastServerPing = System.currentTimeMillis();
+
+    public static boolean mute = false;
+    public static boolean deaf = false;
+
+    public static DatagramSocket clientSocket;
+    public static String IP;
+    public static int port;
+    public static String username;
+
+
+    public static ClientUIHandler uiHandler;
+
+    public static void setUiHandler(ClientUIHandler handler) {
+        uiHandler = handler;
+    }
+
+    public static void handleError(String msg) {
+        if (uiHandler != null) uiHandler.onError(msg);
+        else System.out.println("Error" + msg);
+    }
+    public static void handleDisconnect(String reason) {
+        UDPClient.KEY = null;
+        if (uiHandler != null) uiHandler.onDisconnect(reason);
+        else System.out.println("Disconnected" + reason);
+    }
+
+    public static void runClient(String IP, int port, String username) throws LineUnavailableException {
+        // mic
+        AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, false);
+        DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
+        TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(micInfo);
+
+        // speaker
+        DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
+        speaker = (SourceDataLine) AudioSystem.getLine(speakerInfo);
+        speaker.open(format);
+        speaker.start();
+
+        UDPClient.IP = IP;
+        UDPClient.port = port;
+        UDPClient.username = username;
+
+        try {
+            clientSocket = client_connect(IP, port);
+            if (clientSocket == null) {
+                handleError("Could not connect to server");
+            }
+
+            client_send(IP, port, clientSocket, "join", username);
+
+            // wait for SK from server (blocking)
+            long start = System.currentTimeMillis();
+            long waitTimeoutMs = 10000; // 10s max wait for SK
+            while (UDPClient.KEY == null && !clientSocket.isClosed()) {
+                try {
+                    String data = client_receive(clientSocket);
+                    Thread.sleep(50);
+
+                    if (data != null) {
+                        switch (data) {
+                            case "auth|request" -> {
+                                start = System.currentTimeMillis();
+                                if (uiHandler != null) {
+                                    uiHandler.onAuthRequest(authKey -> {
+                                        client_send(IP, port, clientSocket, "auth", authKey);
+                                    });
+                                }
+                            }
+                            case "auth|wrong" -> {
+                                start = System.currentTimeMillis();
+                                disconnect("Wrong Auth Key");
+                            }
+                            case "auth|ok" -> {
+                                if (uiHandler != null) {
+                                    uiHandler.onAuthCorrect();
+                                }
+                            }
+                        }
+                    } else {
+                        if (System.currentTimeMillis() - start > waitTimeoutMs && !clientSocket.isClosed()) {
+                            disconnect("Server timeout");
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    handleError("Error: " + e.getMessage());
+                }
+            }
+
+            startThreads(clientSocket, IP, port);
+        } catch (Exception e) {
+            handleError("Error: " + e.getMessage());
+        }
+    }
 
     public static void main(String[] args) throws SocketException, LineUnavailableException {
         // mic
@@ -42,7 +138,7 @@ public class UDPClient {
         System.out.println("Enter Username:");
         String username = userSc.nextLine();
 
-        DatagramSocket clientSocket = client_connect(IP, port);
+        clientSocket = client_connect(IP, port);
 
         if (clientSocket != null) {
             System.out.println("Connected");
@@ -102,10 +198,32 @@ public class UDPClient {
                     continue;
                 } else if (message.equalsIgnoreCase("/vc leave")) {
                     inVC = false;
+                    mute = false;
+                    deaf = false;
                     microphone.stop();
                     microphone.close();
                     System.out.println("Left Voice call");
                     client_send(IP, port, clientSocket, "vc", "leave");
+                    continue;
+                } else if (message.equalsIgnoreCase("/vc mute") && inVC) {
+                    mute = !mute;
+                    if (mute) {
+                        System.out.println("You have muted yourself");
+                        client_send(IP, port, clientSocket, "vc", "mute");
+                    } else {
+                        System.out.println("You have unmuted yourself");
+                        client_send(IP, port, clientSocket, "vc", "mute");
+                    }
+                    continue;
+                } else if (message.equalsIgnoreCase("/vc deaf") && inVC) {
+                    deaf = !deaf;
+                    if (deaf) {
+                        System.out.println("You have deafened yourself");
+                        client_send(IP, port, clientSocket, "vc", "deaf");
+                    } else {
+                        System.out.println("You have undeafened yourself");
+                        client_send(IP, port, clientSocket, "vc", "deaf");
+                    }
                     continue;
                 }
                 client_send(IP, port, clientSocket, "chat", encrypt(message, UDPClient.SALT, UDPClient.KEY));
@@ -127,7 +245,7 @@ public class UDPClient {
 
             return clientSocket;
         } catch (IOException e) {
-            e.printStackTrace();
+            handleError("Error: " + e.getMessage());
         }
         return null;
     }
@@ -141,7 +259,7 @@ public class UDPClient {
             clientSocket.send(sendPacket);
             // System.out.println("Message sent: " + message);
         } catch (Exception e) {
-            e.printStackTrace();
+            handleError("Error: "+ e.getMessage());
         }
     }
     public static String client_receive(DatagramSocket clientSocket) throws SocketException {
@@ -160,12 +278,14 @@ public class UDPClient {
             // check if it is a voice packet
             if (packetLength > 6) {
                 String header = new String(packetData, 0, 6);
-                if (header.equals("voice|")) {
+                if (header.equals("voice|") && !deaf) {
                     byte[] audio = Arrays.copyOfRange(packetData, 6, packetLength);
                     byte[] decryptedAudio = decryptBytes(audio, UDPClient.SALT, UDPClient.KEY);
 
                     assert decryptedAudio != null;
-                    speaker.write(decryptedAudio, 0,decryptedAudio.length);
+                    speaker.write(decryptedAudio, 0, decryptedAudio.length);
+                    return null;
+                } else if (header.equals("voice|")) {
                     return null;
                 }
             }
@@ -187,27 +307,31 @@ public class UDPClient {
                     UDPClient.SALT = splitSK[0];
                     UDPClient.KEY = splitSK[1];
                 } else if (type.equals("err")) {
-                    System.out.println(data);
                     clientSocket.close();
-                    System.exit(0);
+                    handleError(data);
                 } else if (type.equals("pong")) {
                     UDPClient.lastServerPing = System.currentTimeMillis();
                     return null;
                 } else if (type.equals("auth")) {
                     return response;
+                } else if (type.equals("vcusers")) {
+                    // implement later
+                    System.out.println(data);
                 }
                 return data;
             }
         } catch (SocketException e) {
-            throw e;
+            if (!clientSocket.isClosed()) {
+                handleError("Error: " + e.getMessage());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            handleError("Error: " + e.getMessage());
         }
         return null;
     }
     public static void startThreads(DatagramSocket clientSocket, String IP, int port) {
         Thread receiveThread = new Thread(() -> {
-            while (true) {
+            while (!clientSocket.isClosed()) {
                 try {
                     String msg = client_receive(clientSocket);
                     if (msg != null) {
@@ -217,7 +341,7 @@ public class UDPClient {
                 } catch (SocketException e) {
                     break;
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    handleError("Error: " + e.getMessage());
                 }
             }
         });
@@ -226,8 +350,9 @@ public class UDPClient {
 
         Thread pingThread = new Thread(() -> {
             try {
-                while (true) {
+                while (!clientSocket.isClosed()) {
                     Thread.sleep(5000); // every 5 seconds
+                    if (clientSocket.isClosed()) break;
                     client_send(IP, port, clientSocket, "ping", "");
                 }
             } catch (InterruptedException e) {
@@ -239,14 +364,12 @@ public class UDPClient {
 
         Thread timeoutThread = new Thread(() -> {
             try {
-                while (true) {
+                while (!clientSocket.isClosed()) {
                     Thread.sleep(2000);
 
                     long now = System.currentTimeMillis();
                     if (now - lastServerPing > 15000) { // 15-second timeout
-                        System.out.println("Disconnected (server timeout)");
-                        clientSocket.close();
-                        System.exit(0);
+                        disconnect("Server timeout");
                     }
                 }
             } catch (InterruptedException e) {
@@ -264,7 +387,7 @@ public class UDPClient {
 
             try {
                 InetAddress serverAddress = InetAddress.getByName(serverIP);
-                while (inVC) {
+                while (inVC && !mute) {
                     int bytesRead = microphone.read(audioBuffer, 0, audioBuffer.length);
                     if (bytesRead > 0) {
                         byte[] audioData = Arrays.copyOf(audioBuffer, bytesRead);
@@ -280,16 +403,33 @@ public class UDPClient {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                handleError("Error: " + e.getMessage());
             }
         });
         voiceThread.setDaemon(true);
         voiceThread.start();
     }
+    public static void disconnect(String reason) {
+        try {
+            if (clientSocket != null && !clientSocket.isClosed()) {
+                UDPClient.KEY = null;
+                client_send(IP, port, clientSocket, "leave", username);
+                clientSocket.close();
+            }
+        } catch (Exception ignored) {}
+
+        handleDisconnect(reason);
+    }
 }
 
 /*
 TODO:
-TUI
+GUI
+|- Client
+   |- chat screen
+   |- handle chat messages
+   |- send input
+   |- update users
+   |- update vc users
 (mobile app?)
  */

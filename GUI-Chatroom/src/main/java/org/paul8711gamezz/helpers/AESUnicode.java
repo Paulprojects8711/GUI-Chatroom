@@ -1,4 +1,4 @@
-package org.paul8711gamezz;
+package org.paul8711gamezz.helpers;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -8,11 +8,9 @@ import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.ChaCha20ParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Arrays;
 
 public class AESUnicode {
 
