@@ -7,6 +7,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,6 +16,8 @@ import java.util.function.Consumer;
 import java.util.List;
 
 // chatroom imports
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.paul8711gamezz.helpers.ClientUIHandler;
 import org.paul8711gamezz.helpers.ServerUIHandler;
 import org.paul8711gamezz.helpers.VCInfo;
@@ -262,8 +265,121 @@ public class GUI {
 
         chat.add(topBar1);
 
-        // spacing
-        chat.add(Box.createVerticalStrut(50)); // in px
+        JPanel mainPanel1 = new JPanel(new BorderLayout(10, 10));
+        mainPanel1.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        // ===== CHAT PANEL =====
+        JPanel chatPanel = new JPanel(new BorderLayout());
+        chatPanel.setBorder(BorderFactory.createTitledBorder("Chat"));
+        chatPanel.setPreferredSize(new Dimension(550, 300));
+
+        JTextArea chatArea = new JTextArea();
+        chatArea.setEditable(false);
+        chatArea.setLineWrap(true);
+        chatArea.setWrapStyleWord(true);
+        JScrollPane chatScroll = new JScrollPane(chatArea);
+        chatScroll.setBorder(BorderFactory.createEmptyBorder(5, 5, 10, 5)); // bottom spacing
+        chatPanel.add(chatScroll, BorderLayout.CENTER);
+
+        JPanel inputPanel = new JPanel(new BorderLayout());
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // some padding
+
+        JTextField chatInput = new JTextField();
+        JButton sendButton = new JButton("Send");
+
+        inputPanel.add(chatInput, BorderLayout.CENTER);
+        inputPanel.add(sendButton, BorderLayout.EAST);
+
+        chatPanel.add(inputPanel, BorderLayout.SOUTH);
+
+        mainPanel1.add(chatPanel, BorderLayout.CENTER);
+
+        sendButton.addActionListener(e -> {
+            String msg = chatInput.getText();
+            if (!msg.isEmpty()) {
+                UDPClient.sendMessage(msg);
+                chatInput.setText("");
+            }
+        });
+        chatInput.addActionListener(e -> {
+            String msg = chatInput.getText();
+            if (!msg.isEmpty()) {
+                UDPClient.sendMessage(msg);
+                chatInput.setText("");
+            }
+        });
+
+        // ===== RIGHT PANEL (Users + VC Users) =====
+        JPanel rightPanel2 = new JPanel();
+        rightPanel2.setLayout(new BorderLayout(5, 5));
+        rightPanel2.setPreferredSize(new Dimension(250, 300));
+
+        // Top: User list
+        JPanel userPanel1 = new JPanel(new BorderLayout());
+        userPanel1.setBorder(BorderFactory.createTitledBorder("Users"));
+        DefaultListModel<String> userListModel1 = new DefaultListModel<>();
+        JList<String> userList1 = new JList<>(userListModel1);
+        JScrollPane userScroll1 = new JScrollPane(userList1);
+        userPanel1.add(userScroll1, BorderLayout.CENTER);
+
+        // Bottom: VC Users
+        JPanel vcPanel1 = new JPanel();
+        vcPanel1.setLayout(new BoxLayout(vcPanel1, BoxLayout.Y_AXIS));
+        vcPanel1.setBorder(BorderFactory.createTitledBorder("Voice Call"));
+
+        DefaultListModel<String> vcUserListModel1 = new DefaultListModel<>();
+        JList<String> vcList1 = new JList<>(vcUserListModel1);
+        JScrollPane vcScroll1 = new JScrollPane(vcList1);
+        vcScroll1.setPreferredSize(new Dimension(230, 120));
+        vcPanel1.add(vcScroll1);
+        vcPanel1.add(Box.createVerticalStrut(5));
+
+        // VC Buttons
+        JPanel vcButtonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        JButton joinButton = new JButton("Join VC");
+        JButton leaveButton = new JButton("Leave VC");
+        JButton muteButton = new JButton("Mute");
+        JButton deafButton = new JButton("Deaf");
+        vcButtonsPanel.add(joinButton);
+        vcPanel1.add(vcButtonsPanel);
+
+        // ===== BUTTON ACTIONS =====
+        joinButton.addActionListener(e -> {
+            UDPClient.sendMessage("/vc join");
+            vcButtonsPanel.removeAll();
+            vcButtonsPanel.add(leaveButton);
+            vcButtonsPanel.add(muteButton);
+            vcButtonsPanel.add(deafButton);
+            vcButtonsPanel.revalidate();
+            vcButtonsPanel.repaint();
+        });
+
+        leaveButton.addActionListener(e -> {
+            UDPClient.sendMessage("/vc leave");
+            vcButtonsPanel.removeAll();
+            vcButtonsPanel.add(joinButton);
+            vcButtonsPanel.revalidate();
+            vcButtonsPanel.repaint();
+        });
+
+        muteButton.addActionListener(e -> {
+            UDPClient.sendMessage("/vc mute");
+            muteButton.setText(muteButton.getText().equals("Mute") ? "Unmute" : "Mute");
+        });
+
+        deafButton.addActionListener(e -> {
+            UDPClient.sendMessage("/vc deaf");
+            deafButton.setText(deafButton.getText().equals("Deaf") ? "Undeaf" : "Deaf");
+        });
+
+        // Combine top & bottom in right panel
+        rightPanel2.add(userPanel1, BorderLayout.CENTER);
+        rightPanel2.add(vcPanel1, BorderLayout.SOUTH);
+
+        mainPanel1.add(rightPanel2, BorderLayout.EAST);
+
+        // Add main panel to server panel
+        chat.add(mainPanel1);
 
         cards.add(chat, "chat");
 
@@ -300,10 +416,10 @@ public class GUI {
         topBar2.add(titleLabel3, BorderLayout.CENTER);
 
         // RIGHT: spacing to keep title centered
-        JPanel rightPanel2 = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        JPanel rightPanel3 = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
         JLabel portLabel = new JLabel("Port: " + portNumber);
-        rightPanel2.add(portLabel);
-        topBar2.add(rightPanel2, BorderLayout.EAST);
+        rightPanel3.add(portLabel);
+        topBar2.add(rightPanel3, BorderLayout.EAST);
 
         server.add(topBar2);
 
@@ -323,9 +439,9 @@ public class GUI {
         mainPanel2.add(logPanel, BorderLayout.CENTER);
 
         // ===== RIGHT PANEL (Users + VC Users) =====
-        JPanel rightPanel3 = new JPanel();
-        rightPanel3.setLayout(new BorderLayout(5, 5));
-        rightPanel3.setPreferredSize(new Dimension(250, 300));
+        JPanel rightPanel4 = new JPanel();
+        rightPanel4.setLayout(new BorderLayout(5, 5));
+        rightPanel4.setPreferredSize(new Dimension(250, 300));
 
         // Top: User list
         JPanel userPanel2 = new JPanel(new BorderLayout());
@@ -337,17 +453,17 @@ public class GUI {
 
         // Bottom: VC Users
         JPanel vcPanel2 = new JPanel(new BorderLayout());
-        vcPanel2.setBorder(BorderFactory.createTitledBorder("VC Users"));
+        vcPanel2.setBorder(BorderFactory.createTitledBorder("Voice Call"));
         DefaultListModel<String> vcUserListModel2 = new DefaultListModel<>();
         JList<String> vcList2 = new JList<>(vcUserListModel2);
         JScrollPane vcScroll2 = new JScrollPane(vcList2);
         vcPanel2.add(vcScroll2, BorderLayout.CENTER);
 
         // Combine top & bottom in right panel
-        rightPanel3.add(userPanel2, BorderLayout.CENTER);
-        rightPanel3.add(vcPanel2, BorderLayout.SOUTH);
+        rightPanel4.add(userPanel2, BorderLayout.CENTER);
+        rightPanel4.add(vcPanel2, BorderLayout.SOUTH);
 
-        mainPanel2.add(rightPanel3, BorderLayout.EAST);
+        mainPanel2.add(rightPanel4, BorderLayout.EAST);
 
         // Add main panel to server panel
         server.add(mainPanel2);
@@ -422,6 +538,50 @@ public class GUI {
                     JOptionPane.showMessageDialog(frame, "Auth OK");
                 });
             }
+            @Override
+            public void onMessage(String msg) {
+                chatArea.append(msg + "\n");
+                chatArea.setCaretPosition(chatArea.getDocument().getLength());
+            }
+            @Override
+            public void onVCListUpdate(String VCUsers) {
+                Gson gson = new Gson();
+
+                // Define the type for a List of Map<String, Object>
+                Type listType = new TypeToken<List<Map<String, Object>>>(){}.getType();
+
+                List<Map<String, Object>> vcList = gson.fromJson(VCUsers, listType);
+
+                // Clear old list
+                vcUserListModel1.clear();
+
+                // Populate VC user list
+                for (Map<String, Object> userObj : vcList) {
+                    String username = (String) userObj.get("username");
+                    boolean mute = Boolean.TRUE.equals(userObj.get("mute"));
+                    boolean deaf = Boolean.TRUE.equals(userObj.get("deaf"));
+
+                    String display = username;
+                    if (mute) display += " [M]";
+                    if (deaf) display += " [D]";
+
+                    vcUserListModel1.addElement(display);
+                }
+            }
+            @Override
+            public void onUserListUpdate(String users) {
+                Gson gson = new Gson();
+                Type type = new TypeToken<List<String>>(){}.getType();
+
+                List<String> userList = gson.fromJson(users, type);
+
+                List<String> sortedList = new ArrayList<>(userList);
+                Collections.sort(sortedList);
+                userListModel1.clear();
+                for (String user : sortedList) {
+                    userListModel1.addElement(user);
+                }
+            }
         });
 
         UDPServer.setUiHandler(new ServerUIHandler() {
@@ -444,15 +604,15 @@ public class GUI {
                     userListModel2.addElement(username);
                 }
             }
-            public void onVCListUpdate(Map<String, VCInfo> vcStatus) {
+            public void onVCListUpdate(Map<String, VCInfo> vcStatus, Map<String, String> userMap) {
                 vcUserListModel2.clear();
                 List<Map.Entry<String, VCInfo>> sortedEntries = new ArrayList<>(vcStatus.entrySet());
                 sortedEntries.sort(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER));
                 for (Map.Entry<String, VCInfo> entry : sortedEntries) {
-                    String username = entry.getKey();
+                    String clientID = entry.getKey();
                     VCInfo status = entry.getValue();
                     if (status.inVC) {
-                        String display = username;
+                        String display = userMap.get(clientID);
                         if (status.mute) display += " [M]";
                         if (status.deaf) display += " [D]";
                         vcUserListModel2.addElement(display);

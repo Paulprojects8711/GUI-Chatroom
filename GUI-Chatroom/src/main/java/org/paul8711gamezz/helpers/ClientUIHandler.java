@@ -7,4 +7,7 @@ public interface ClientUIHandler {
     void onDisconnect(String reason);
     void onAuthRequest(Consumer<String> callback);
     void onAuthCorrect();
+    void onMessage(String msg);
+    void onUserListUpdate(String users);
+    void onVCListUpdate(String VCUsers);
 }

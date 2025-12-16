@@ -28,6 +28,9 @@ public class UDPClient {
     public static int port;
     public static String username;
 
+    public static TargetDataLine microphone;
+    public static AudioFormat format;
+
 
     public static ClientUIHandler uiHandler;
 
@@ -44,12 +47,74 @@ public class UDPClient {
         if (uiHandler != null) uiHandler.onDisconnect(reason);
         else System.out.println("Disconnected" + reason);
     }
+    public static void handleMessage(String msg) {
+        if (uiHandler != null) uiHandler.onMessage(msg);
+        else System.out.println(msg);
+    }
+    public static void handleVCUsersUpdate(String VCUsers) {
+        if (uiHandler != null) uiHandler.onVCListUpdate(VCUsers);
+        else System.out.println(VCUsers);
+    }
+    public static void handleUsersUpdate(String users) {
+        if (uiHandler != null) uiHandler.onUserListUpdate(users);
+        else System.out.println(users);
+    }
+    public static void sendMessage(String msg) {
+        try {
+            if (msg.equalsIgnoreCase("/leave")) {
+                client_send(IP, port, clientSocket, "leave", username);
+                handleDisconnect("Closed by User");
+                clientSocket.close();
+                return;
+            } else if (msg.equalsIgnoreCase("/vc join")) {
+                inVC = true;
+                microphone.open(format);
+                microphone.start();
+                startVoiceThread(clientSocket, IP, port, microphone);
+                handleMessage("Joined Voice Call");
+                client_send(IP, port, clientSocket, "vc", "join");
+                return;
+            } else if (msg.equalsIgnoreCase("/vc leave")) {
+                inVC = false;
+                mute = false;
+                deaf = false;
+                microphone.stop();
+                microphone.close();
+                handleMessage("Left Voice Call");
+                client_send(IP, port, clientSocket, "vc", "leave");
+                return;
+            } else if (msg.equalsIgnoreCase("/vc mute") && inVC) {
+                mute = !mute;
+                if (mute) {
+                    handleMessage("You have muted yourself");
+                    client_send(IP, port, clientSocket, "vc", "mute");
+                } else {
+                    handleMessage("You have unmuted yourself");
+                    client_send(IP, port, clientSocket, "vc", "mute");
+                }
+                return;
+            } else if (msg.equalsIgnoreCase("/vc deaf") && inVC) {
+                deaf = !deaf;
+                if (deaf) {
+                    handleMessage("You have deafened yourself");
+                    client_send(IP, port, clientSocket, "vc", "deaf");
+                } else {
+                    handleMessage("You have undeafened yourself");
+                    client_send(IP, port, clientSocket, "vc", "deaf");
+                }
+                return;
+            }
+            client_send(IP, port, clientSocket, "chat", encrypt(msg, UDPClient.SALT, UDPClient.KEY));
+        } catch (Exception e) {
+            handleError(e.getMessage());
+        }
+    }
 
     public static void runClient(String IP, int port, String username) throws LineUnavailableException {
         // mic
-        AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, false);
+        format = new AudioFormat(44100.0f, 16, 1, true, false);
         DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
-        TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(micInfo);
+        microphone = (TargetDataLine) AudioSystem.getLine(micInfo);
 
         // speaker
         DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
@@ -104,13 +169,13 @@ public class UDPClient {
                         }
                     }
                 } catch (Exception e) {
-                    handleError("Error: " + e.getMessage());
+                    handleError(e.getMessage());
                 }
             }
 
             startThreads(clientSocket, IP, port);
         } catch (Exception e) {
-            handleError("Error: " + e.getMessage());
+            handleError(e.getMessage());
         }
     }
 
@@ -245,7 +310,7 @@ public class UDPClient {
 
             return clientSocket;
         } catch (IOException e) {
-            handleError("Error: " + e.getMessage());
+            handleError(e.getMessage());
         }
         return null;
     }
@@ -315,17 +380,20 @@ public class UDPClient {
                 } else if (type.equals("auth")) {
                     return response;
                 } else if (type.equals("vcusers")) {
-                    // implement later
-                    System.out.println(data);
+                    handleVCUsersUpdate(data);
+                    return null;
+                } else if (type.equals("users")) {
+                    handleUsersUpdate(data);
+                    return null;
                 }
                 return data;
             }
         } catch (SocketException e) {
             if (!clientSocket.isClosed()) {
-                handleError("Error: " + e.getMessage());
+                handleError(e.getMessage());
             }
         } catch (Exception e) {
-            handleError("Error: " + e.getMessage());
+            handleError(e.getMessage());
         }
         return null;
     }
@@ -335,13 +403,12 @@ public class UDPClient {
                 try {
                     String msg = client_receive(clientSocket);
                     if (msg != null) {
-                        System.out.println("\n" + msg);
-                        System.out.println(">");
+                        handleMessage(msg);
                     }
                 } catch (SocketException e) {
                     break;
                 } catch (Exception e) {
-                    handleError("Error: " + e.getMessage());
+                    handleError(e.getMessage());
                 }
             }
         });
@@ -387,7 +454,7 @@ public class UDPClient {
 
             try {
                 InetAddress serverAddress = InetAddress.getByName(serverIP);
-                while (inVC && !mute) {
+                while (inVC && !mute && !clientSocket.isClosed()) {
                     int bytesRead = microphone.read(audioBuffer, 0, audioBuffer.length);
                     if (bytesRead > 0) {
                         byte[] audioData = Arrays.copyOf(audioBuffer, bytesRead);
@@ -403,7 +470,7 @@ public class UDPClient {
                     }
                 }
             } catch (Exception e) {
-                handleError("Error: " + e.getMessage());
+                handleError(e.getMessage());
             }
         });
         voiceThread.setDaemon(true);
@@ -424,12 +491,5 @@ public class UDPClient {
 
 /*
 TODO:
-GUI
-|- Client
-   |- chat screen
-   |- handle chat messages
-   |- send input
-   |- update users
-   |- update vc users
-(mobile app?)
+ - mobile app
  */

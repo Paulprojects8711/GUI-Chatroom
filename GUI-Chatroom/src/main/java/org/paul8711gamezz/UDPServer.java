@@ -1,5 +1,6 @@
 package org.paul8711gamezz;
 
+import com.google.gson.Gson;
 import org.paul8711gamezz.helpers.ServerUIHandler;
 import org.paul8711gamezz.helpers.Hash;
 import org.paul8711gamezz.helpers.VCInfo;
@@ -38,8 +39,8 @@ public class UDPServer {
         if (uiHandler != null) uiHandler.onUserListUpdate(userMap);
         else System.out.println(userMap);
     }
-    public static void handleVCListUpdate(Map<String, VCInfo> vcStatus) {
-        if (uiHandler != null) uiHandler.onVCListUpdate(vcStatus);
+    public static void handleVCListUpdate(Map<String, VCInfo> vcStatus, Map<String, String> userMap) {
+        if (uiHandler != null) uiHandler.onVCListUpdate(vcStatus, userMap);
         else System.out.println(vcStatus);
     }
     public static void handleLog(String msg) {
@@ -102,7 +103,7 @@ public class UDPServer {
                                     lastSeen.remove(clientID);
                                     vcStatus.remove(clientID);
                                     handleUserListUpdate(userMap);
-                                    handleVCListUpdate(vcStatus);
+                                    handleVCListUpdate(vcStatus, userMap);
                                     broadcast(serverSocket, userMap, "leave|" + username + " disconnected (timeout)");
                                     broadcastUserList(serverSocket, userMap);
                                 }
@@ -146,15 +147,17 @@ public class UDPServer {
                     if (!userMap.containsValue(data)) {
                         userMap.put(clientID, data);
                         lastSeen.put(clientID, System.currentTimeMillis());
+                        vcStatus.put(clientID, new VCInfo(false, false, false));
                         if (!authKeyHash.isEmpty()) {
                             sendToSingle(serverSocket, clientID, "auth|request", lastSent);
                         } else {
-                            handleLog("User" + data + " joined");
+                            handleLog("User " + data + " joined");
                             sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
                             broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
                             broadcastUserList(serverSocket, userMap);
+                            broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
                             handleUserListUpdate(userMap);
-                            handleVCListUpdate(vcStatus);
+                            handleVCListUpdate(vcStatus, userMap);
                         }
                     } else {
                         sendToSingle(serverSocket, clientID, "err|" + "Username already in use", lastSent);
@@ -165,16 +168,18 @@ public class UDPServer {
                         sendToSingle(serverSocket, clientID, "auth|wrong", lastSent);
                         userMap.remove(clientID);
                         lastSeen.remove(clientID);
+                        vcStatus.remove(clientID);
                         handleUserListUpdate(userMap);
-                        handleVCListUpdate(vcStatus);
+                        handleVCListUpdate(vcStatus, userMap);
                     } else {
                         sendToSingle(serverSocket, clientID, "auth|ok", lastSent);
                         handleLog("User " + userMap.get(clientID) + " joined");
                         sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
                         broadcast(serverSocket, userMap, "join|" + "User " + userMap.get(clientID) + " joined");
                         broadcastUserList(serverSocket, userMap);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
                         handleUserListUpdate(userMap);
-                        handleVCListUpdate(vcStatus);
+                        handleVCListUpdate(vcStatus, userMap);
                     }
                 } else if (type.equals("chat")) {
                     String username = userMap.get(clientID);
@@ -188,8 +193,9 @@ public class UDPServer {
                         vcStatus.remove(clientID);
                         broadcast(serverSocket, userMap, "leave|" + "User " + username + " left");
                         broadcastUserList(serverSocket, userMap);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
                         handleUserListUpdate(userMap);
-                        handleVCListUpdate(vcStatus);
+                        handleVCListUpdate(vcStatus, userMap);
                     }
                 } else if (type.equals("ping")) {
                     lastSeen.put(clientID, System.currentTimeMillis());
@@ -200,25 +206,25 @@ public class UDPServer {
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " joined Voice call");
                         broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
                         handleUserListUpdate(userMap);
-                        handleVCListUpdate(vcStatus);
+                        handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("leave")) {
                         vcStatus.put(clientID, new VCInfo(false, false, false));
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " left Voice call");
                         handleUserListUpdate(userMap);
-                        handleVCListUpdate(vcStatus);
+                        handleVCListUpdate(vcStatus, userMap);
                         broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
                     } else if (data.equals("mute")) {
                         VCInfo info = vcStatus.get(clientID);
                         info.mute = !info.mute;
                         broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
                         handleUserListUpdate(userMap);
-                        handleVCListUpdate(vcStatus);
+                        handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("deaf")) {
                         VCInfo info = vcStatus.get(clientID);
                         info.deaf = !info.deaf;
                         broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
                         handleUserListUpdate(userMap);
-                        handleVCListUpdate(vcStatus);
+                        handleVCListUpdate(vcStatus, userMap);
                     }
                 }
             }
@@ -252,33 +258,35 @@ public class UDPServer {
         }
     }
     public static void broadcastVCUsers(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, VCInfo> vcStatus, Map<String, String> lastSent) throws IOException {
-        StringBuilder sb = new StringBuilder(); // sb stands for shitbull (bullshit in reverse)
-        sb.append("vcstatus|");
+        Gson gson = new Gson();
 
+        List<Map<String, Object>> vcList = new ArrayList<>();
         for (Map.Entry<String, VCInfo> entry : vcStatus.entrySet()) {
-            String user = entry.getKey();
+            String clientID = entry.getKey();
             VCInfo info = entry.getValue();
 
-            // only include if in vc
-            sb.append(user)
-                    .append(",")
-                    .append(info.inVC)
-                    .append(",")
-                    .append(info.mute)
-                    .append(",")
-                    .append(info.deaf)
-                    .append(";");
-        }
-        for (String clientID : userMap.keySet()) {
-            if (vcStatus.getOrDefault(clientID, new VCInfo(false, false, false)).inVC) {
-
-                sendToSingle(serverSocket, clientID, sb.toString(), lastSent);
+            if (info.inVC) {
+                Map<String, Object> obj = new HashMap<>();
+                obj.put("username", userMap.get(clientID)); // actual username
+                obj.put("inVC", info.inVC);
+                obj.put("mute", info.mute);
+                obj.put("deaf", info.deaf);
+                vcList.add(obj);
             }
+        }
+
+        String json = gson.toJson(vcList);
+        String message = "vcusers|" + json;
+
+        // Send to each user who is in VC
+        for (String clientID : userMap.keySet()) {
+            sendToSingle(serverSocket, clientID, message, lastSent);
         }
     }
     public static void broadcastUserList(DatagramSocket serverSocket, Map<String, String> userMap) throws IOException {
-        String list = String.join(",", userMap.values());
-        broadcast(serverSocket, userMap, "users|" + list);
+        Gson gson = new Gson();
+        String json = gson.toJson(userMap.values());
+        broadcast(serverSocket, userMap, "users|" + json);
     }
     public static void sendToSingle(DatagramSocket serverSocket, String clientID, String message, Map<String, String> lastSent) throws IOException {
         String[] parts = clientID.split(":");
@@ -304,7 +312,8 @@ public class UDPServer {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         handleStop(reason);
     }

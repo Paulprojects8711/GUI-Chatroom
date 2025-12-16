@@ -14,6 +14,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("com.formdev:flatlaf:3.1.1")
+    implementation ("com.google.code.gson:gson:2.11.0")
 }
 
 tasks.test {
