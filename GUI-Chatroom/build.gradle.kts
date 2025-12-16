@@ -20,3 +20,20 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
+tasks.register<Jar>("fatJar") {
+    archiveBaseName.set("GUI-Chatroom")
+    manifest {
+        attributes["Main-Class"] = "org.paul8711gamezz.GUI"
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE // <-- this skips duplicates
+
+    val dependencies = configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) }
+    from(dependencies)
+
+    from(sourceSets.main.get().output)
+}
+
+// run with ./gradlew clean fatJar
+// output dir: build/libs
