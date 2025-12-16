@@ -1,5 +1,10 @@
 package org.paul8711gamezz;
 
+import com.google.gson.Gson;
+import org.paul8711gamezz.helpers.ServerUIHandler;
+import org.paul8711gamezz.helpers.Hash;
+import org.paul8711gamezz.helpers.VCInfo;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -13,6 +18,43 @@ public class UDPServer {
 
     private static final String SALT = genSK(32);
     private static final String KEY = genSK(32);
+
+    public static DatagramSocket serverSocket;
+
+    public static ServerUIHandler uiHandler;
+
+    public static void setUiHandler(ServerUIHandler handler) {
+        uiHandler = handler;
+    }
+
+    public static void handleError(String msg) {
+        if (uiHandler != null) uiHandler.onError(msg);
+        else System.out.println("Error" + msg);
+    }
+    public static void handleStop(String reason) {
+        if (uiHandler != null) uiHandler.onStop(reason);
+        else System.out.println("Disconnected" + reason);
+    }
+    public static void handleUserListUpdate(Map<String, String> userMap) {
+        if (uiHandler != null) uiHandler.onUserListUpdate(userMap);
+        else System.out.println(userMap);
+    }
+    public static void handleVCListUpdate(Map<String, VCInfo> vcStatus, Map<String, String> userMap) {
+        if (uiHandler != null) uiHandler.onVCListUpdate(vcStatus, userMap);
+        else System.out.println(vcStatus);
+    }
+    public static void handleLog(String msg) {
+        if (uiHandler != null) uiHandler.onLog(msg);
+        else System.out.println(msg);
+    }
+
+    public static void runServer(int port, String authKey) throws Exception {
+        if (!authKey.isEmpty()) {
+            server(port, Hash.hash(authKey));
+        } else {
+            server(port, "");
+        }
+    }
 
     public static void main(String[] args) throws Exception {
         Scanner portSc = new Scanner(System.in);
@@ -32,18 +74,20 @@ public class UDPServer {
     public static void server(int port, String authKeyHash) {
         try {
             DatagramSocket serverSocket = new DatagramSocket(port);
-            System.out.println("Server started on Port " + port);
+            UDPServer.serverSocket = serverSocket;
+            handleLog("Server started on Port " + port);
             Map<String, String> userMap = new HashMap<>();
             Map<String, Long> lastSeen = new HashMap<>();
-            Map<String, Boolean> vcStatus = new HashMap<>();
+            Map<String, VCInfo> vcStatus = new HashMap<>();
 
             byte[] receiveData = new byte[1024];
             Map<String, String> lastSent = new HashMap<>(); // <clientID, lastMessageSent>
 
             new Thread(() -> {
                 try {
-                    while (true) {
+                    while (!serverSocket.isClosed()) {
                         Thread.sleep(5000); // check every 5 seconds
+                        if (serverSocket.isClosed()) break;
                         long now = System.currentTimeMillis();
                         for (String clientID : new ArrayList<>(lastSeen.keySet())) {
                             if (now - lastSeen.get(clientID) > 15000) { // 15 sec timeout
@@ -58,6 +102,8 @@ public class UDPServer {
                                     userMap.remove(clientID);
                                     lastSeen.remove(clientID);
                                     vcStatus.remove(clientID);
+                                    handleUserListUpdate(userMap);
+                                    handleVCListUpdate(vcStatus, userMap);
                                     broadcast(serverSocket, userMap, "leave|" + username + " disconnected (timeout)");
                                     broadcastUserList(serverSocket, userMap);
                                 }
@@ -65,11 +111,12 @@ public class UDPServer {
                         }
                     }
                 } catch (InterruptedException | IOException e) {
-                    e.printStackTrace();
+                    handleStop("Unknown Error");
+                    handleError("Error: " + e.getMessage());
                 }
             }).start();
 
-            while (true) {
+            while (!serverSocket.isClosed()) {
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                 serverSocket.receive(receivePacket);
 
@@ -90,7 +137,7 @@ public class UDPServer {
                 }
 
                 String message = new String(packetData, 0, packetLength);
-                System.out.println("Received message: " + message);
+                handleLog("Received packet: " + message);
 
                 String[] splitMessage = message.split("\\|", 2);
                 String type = splitMessage[0];
@@ -100,33 +147,44 @@ public class UDPServer {
                     if (!userMap.containsValue(data)) {
                         userMap.put(clientID, data);
                         lastSeen.put(clientID, System.currentTimeMillis());
+                        vcStatus.put(clientID, new VCInfo(false, false, false));
                         if (!authKeyHash.isEmpty()) {
                             sendToSingle(serverSocket, clientID, "auth|request", lastSent);
                         } else {
-                            System.out.println("User " + data + " joined");
+                            handleLog("User " + data + " joined");
                             sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
                             broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
                             broadcastUserList(serverSocket, userMap);
+                            broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                            handleUserListUpdate(userMap);
+                            handleVCListUpdate(vcStatus, userMap);
                         }
                     } else {
                         sendToSingle(serverSocket, clientID, "err|" + "Username already in use", lastSent);
                     }
                 } else if (type.equals("auth")) {
                     if (!Hash.verify(data, authKeyHash)) {
+                        handleLog("User " + userMap.get(clientID) + " got the auth key wrong");
                         sendToSingle(serverSocket, clientID, "auth|wrong", lastSent);
                         userMap.remove(clientID);
                         lastSeen.remove(clientID);
+                        vcStatus.remove(clientID);
+                        handleUserListUpdate(userMap);
+                        handleVCListUpdate(vcStatus, userMap);
                     } else {
                         sendToSingle(serverSocket, clientID, "auth|ok", lastSent);
-                        System.out.println("User " + userMap.get(clientID) + " joined");
+                        handleLog("User " + userMap.get(clientID) + " joined");
                         sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
                         broadcast(serverSocket, userMap, "join|" + "User " + userMap.get(clientID) + " joined");
                         broadcastUserList(serverSocket, userMap);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        handleUserListUpdate(userMap);
+                        handleVCListUpdate(vcStatus, userMap);
                     }
                 } else if (type.equals("chat")) {
                     String username = userMap.get(clientID);
                     lastSeen.put(clientID, System.currentTimeMillis());
-                    System.out.println(username + ": " + data);
+                    handleLog(username + ": " + data);
                     broadcast(serverSocket, userMap, "chat|" + username + ": " + data);
                 } else if (type.equals("leave")) {
                     String username = userMap.get(clientID);
@@ -135,24 +193,43 @@ public class UDPServer {
                         vcStatus.remove(clientID);
                         broadcast(serverSocket, userMap, "leave|" + "User " + username + " left");
                         broadcastUserList(serverSocket, userMap);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        handleUserListUpdate(userMap);
+                        handleVCListUpdate(vcStatus, userMap);
                     }
                 } else if (type.equals("ping")) {
                     lastSeen.put(clientID, System.currentTimeMillis());
                     sendToSingle(serverSocket, clientID, "pong|", lastSent);
                 } else if (type.equals("vc")) {
                     if (data.equals("join")) {
-                        vcStatus.put(clientID, true);
+                        vcStatus.put(clientID, new VCInfo(true, false, false));
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " joined Voice call");
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        handleUserListUpdate(userMap);
+                        handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("leave")) {
-                        vcStatus.put(clientID, false);
+                        vcStatus.put(clientID, new VCInfo(false, false, false));
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " left Voice call");
+                        handleUserListUpdate(userMap);
+                        handleVCListUpdate(vcStatus, userMap);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                    } else if (data.equals("mute")) {
+                        VCInfo info = vcStatus.get(clientID);
+                        info.mute = !info.mute;
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        handleUserListUpdate(userMap);
+                        handleVCListUpdate(vcStatus, userMap);
+                    } else if (data.equals("deaf")) {
+                        VCInfo info = vcStatus.get(clientID);
+                        info.deaf = !info.deaf;
+                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        handleUserListUpdate(userMap);
+                        handleVCListUpdate(vcStatus, userMap);
                     }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            if (!serverSocket.isClosed()) handleError("Error: " + e.getMessage());
         }
     }
     public static void broadcast(DatagramSocket serverSocket, Map<String, String> userMap, String message) throws IOException {
@@ -168,9 +245,9 @@ public class UDPServer {
             serverSocket.send(sendPacket);
         }
     }
-    public static void broadcastVoice(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, Boolean> vcStatus, String senderID, byte[] sendData) throws IOException {
+    public static void broadcastVoice(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, VCInfo> vcStatus, String senderID, byte[] sendData) throws IOException {
         for (String clientID : userMap.keySet()) {
-            if (vcStatus.getOrDefault(clientID, false) && !clientID.equals(senderID)) {
+            if (vcStatus.getOrDefault(clientID, new VCInfo(false, false, false)).inVC && !clientID.equals(senderID)) {
                 String[] parts = clientID.split(":");
                 InetAddress clientAddress = InetAddress.getByName(parts[0].replace("/", ""));
                 int clientPort = Integer.parseInt(parts[1]);
@@ -180,9 +257,36 @@ public class UDPServer {
             }
         }
     }
+    public static void broadcastVCUsers(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, VCInfo> vcStatus, Map<String, String> lastSent) throws IOException {
+        Gson gson = new Gson();
+
+        List<Map<String, Object>> vcList = new ArrayList<>();
+        for (Map.Entry<String, VCInfo> entry : vcStatus.entrySet()) {
+            String clientID = entry.getKey();
+            VCInfo info = entry.getValue();
+
+            if (info.inVC) {
+                Map<String, Object> obj = new HashMap<>();
+                obj.put("username", userMap.get(clientID)); // actual username
+                obj.put("inVC", info.inVC);
+                obj.put("mute", info.mute);
+                obj.put("deaf", info.deaf);
+                vcList.add(obj);
+            }
+        }
+
+        String json = gson.toJson(vcList);
+        String message = "vcusers|" + json;
+
+        // Send to each user who is in VC
+        for (String clientID : userMap.keySet()) {
+            sendToSingle(serverSocket, clientID, message, lastSent);
+        }
+    }
     public static void broadcastUserList(DatagramSocket serverSocket, Map<String, String> userMap) throws IOException {
-        String list = String.join(",", userMap.values());
-        broadcast(serverSocket, userMap, "users|" + list);
+        Gson gson = new Gson();
+        String json = gson.toJson(userMap.values());
+        broadcast(serverSocket, userMap, "users|" + json);
     }
     public static void sendToSingle(DatagramSocket serverSocket, String clientID, String message, Map<String, String> lastSent) throws IOException {
         String[] parts = clientID.split(":");
@@ -202,5 +306,15 @@ public class UDPServer {
             sb.append(CHARACTERS.charAt(index));
         }
         return sb.toString();
+    }
+    public static void stop(String reason) {
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (Exception ignored) {
+        }
+
+        handleStop(reason);
     }
 }

@@ -1,4 +1,4 @@
-package org.paul8711gamezz;
+package org.paul8711gamezz.helpers;
 
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
