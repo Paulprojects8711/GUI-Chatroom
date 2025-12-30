@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "org.paul8711gamezz"
-version = "1.0-SNAPSHOT"
+version = "1.1"
 
 repositories {
     mavenCentral()
@@ -27,7 +27,7 @@ tasks.register<Jar>("fatJar") {
         attributes["Main-Class"] = "org.paul8711gamezz.GUI"
     }
 
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE // <-- this skips duplicates
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     val dependencies = configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) }
     from(dependencies)
