@@ -1,0 +1,61 @@
+name: Generate New Default Key
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1' # weekly: 0 0 * * 1 monthly: 0 0 1 * *
+
+jobs:
+  rotate-key:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout main branch for Java code
+      - name: Checkout main
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          path: main-repo  # check it out into subfolder
+
+      # Step 2: Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Step 3: Build the project (inside main-repo)
+      - name: Build project
+        run: ./gradlew build
+        working-directory: ./main-repo
+
+      # Step 4: Checkout default-key branch into separate folder
+      - name: Checkout default-key
+        uses: actions/checkout@v3
+        with:
+          ref: default-key
+          path: default-key
+
+      # Step 5: Read previous version from default-key JSON
+      - name: Read previous version
+        id: read_version
+        run: |
+          if [ -f default-key/default_key.json ]; then
+            VERSION=$(jq '.version' default-key/default_key.json)
+            echo "version=$((VERSION + 1))" >> $GITHUB_ENV
+          else
+            echo "version=1" >> $GITHUB_ENV
+          fi
+
+      # Step 6: Generate new key using Java in main-repo
+      - name: Generate new key
+        run: java -cp main-repo/build/classes/java/main org.paul8711gamezz.helpers.KeyGenerator ${{ env.version }} > default-key/default_key.json
+
+      # Step 7: Commit and push
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cd default-key
+          git add default_key.json
+          git commit -m "Rotate default key to version ${{ env.version }}"
+          git push origin default-key
