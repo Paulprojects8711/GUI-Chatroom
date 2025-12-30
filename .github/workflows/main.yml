@@ -35,6 +35,8 @@ jobs:
         with:
           ref: default-key
           path: default-key
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       # Step 5: Read previous version from default-key JSON
       - name: Read previous version
