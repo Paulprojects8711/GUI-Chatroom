@@ -32,6 +32,10 @@ public class GUI {
         }
 
         JFrame frame = new JFrame("GUI-Chatroom");
+
+        Image icon = Toolkit.getDefaultToolkit().getImage(GUI.class.getResource("/icon.png"));
+        frame.setIconImage(icon);
+
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(600, 400);
         frame.setLayout(new BorderLayout(10, 10));
