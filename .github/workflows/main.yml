@@ -30,6 +30,7 @@ jobs:
       # Step 3: Build Java project
       - name: Build project
         run: |
+          ls -la ./main-repo
           chmod +x ./main-repo/gradlew
           ./main-repo/gradlew build
 
