@@ -77,7 +77,7 @@ public class GUI {
         // description
         JLabel descLabel = new JLabel("An end-to-end encrypted Graphical User Interface Chatroom", SwingConstants.CENTER);
         descLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        descLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        descLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         selectScreen.add(descLabel);
 
         // spacing
@@ -95,6 +95,20 @@ public class GUI {
         JButton hostButton1 = new JButton("Host");
         hostButton1.setAlignmentX(Component.CENTER_ALIGNMENT);
         selectScreen.add(hostButton1);
+
+        selectScreen.add(Box.createVerticalStrut(50));
+
+        JLabel versionLabel = new JLabel("v1.1", SwingConstants.CENTER);
+        versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        versionLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        selectScreen.add(versionLabel);
+
+        selectScreen.add(Box.createVerticalStrut(10));
+
+        JLabel creditLabel = new JLabel("by Paul8711gamezz", SwingConstants.CENTER);
+        creditLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        creditLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        selectScreen.add(creditLabel);
 
         cards.add(selectScreen, "selectScreen");
 
@@ -144,37 +158,6 @@ public class GUI {
         JButton joinButton2 = new JButton("Join");
         joinButton2.setAlignmentX(Component.CENTER_ALIGNMENT);
         roomJoin.add(joinButton2);
-
-        joinButton2.addActionListener(e -> {
-            String ipText = ip.getText();
-            String portText = port1.getText();
-            String userText = username.getText();
-            if (!ipText.isEmpty() && !portText.isEmpty() && !userText.isEmpty()) {
-                try {
-                    int portNumber = Integer.parseInt(portText);
-                    new Thread(() -> {
-                        try {
-                            UDPClient.runClient(ipText, portNumber, userText);
-                        } catch (LineUnavailableException ex) {
-                            JOptionPane.showMessageDialog(frame, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                            CardLayout cl = (CardLayout)(cards.getLayout());
-                            cl.show(cards, "selectScreen");
-                        }
-                    }).start();
-                    CardLayout cl = (CardLayout)(cards.getLayout());
-                    cl.show(cards, "chat");
-                } catch (NumberFormatException ex) {
-                    System.err.println("Port is not an integer");
-                    JOptionPane.showMessageDialog(roomJoin, "Please enter a valid Integer for the Port.", "Invalid Port", JOptionPane.ERROR_MESSAGE);
-                }
-            } else if (ipText.isEmpty()) {
-                JOptionPane.showMessageDialog(roomJoin, "Please enter an IP", "Invalid IP", JOptionPane.ERROR_MESSAGE);
-            } else if (portText.isEmpty()) {
-                JOptionPane.showMessageDialog(roomJoin, "Please enter a Port", "Invalid Port", JOptionPane.ERROR_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(roomJoin, "Please enter a Username", "Invalid Username", JOptionPane.ERROR_MESSAGE);
-            }
-        });
 
         cards.add(roomJoin, "roomJoin");
 
@@ -238,17 +221,6 @@ public class GUI {
         // LEFT: Back button with padding
         JPanel leftPanel1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         JButton backButton1 = new JButton("Leave");
-        backButton1.addActionListener(e -> {
-            CardLayout cl = (CardLayout)(cards.getLayout());
-            cl.show(cards, "selectScreen");
-            UDPClient.disconnect("Closed by User");
-
-            clearForm(roomJoin);
-            clearForm(serverConfig);
-            authKeyRow.setVisible(false);
-            clearForm(chat);
-            clearForm(server);
-        });
         leftPanel1.add(backButton1);
         topBar1.add(leftPanel1, BorderLayout.WEST);
 
@@ -258,12 +230,82 @@ public class GUI {
         titleLabel2.setPreferredSize(new Dimension(titleLabel2.getPreferredSize().width, 25));
         topBar1.add(titleLabel2, BorderLayout.CENTER);
 
-        // RIGHT: spacing to keep title centered
-        JPanel rightSpacer1 = new JPanel();
-        rightSpacer1.setPreferredSize(leftPanel1.getPreferredSize());
-        topBar1.add(rightSpacer1, BorderLayout.EAST);
+        // ===== RIGHT SPACER =====
+        JPanel rightSpacer = new JPanel();
+        rightSpacer.setPreferredSize(leftPanel1.getPreferredSize());
+        topBar1.add(rightSpacer, BorderLayout.EAST);
+
+
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.X_AXIS));
+
+        // Checkbox (fixed position)
+        JCheckBox showAddrBox = new JCheckBox("Show connection details");
+        showAddrBox.setFont(new Font("Arial", Font.BOLD, 12));
+        infoPanel.add(showAddrBox);
+        infoPanel.add(Box.createVerticalStrut(10));
+
+        // Stacked IP + Port
+        JPanel infoTextPanel = new JPanel();
+        infoTextPanel.setLayout(new BoxLayout(infoTextPanel, BoxLayout.X_AXIS));
+
+        JLabel ipLabel = new JLabel("IP: ");
+        JLabel portLabel1 = new JLabel("Port: ");
+        ipLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        portLabel1.setFont(new Font("Arial", Font.BOLD, 12));
+
+        infoTextPanel.add(ipLabel);
+        infoTextPanel.add(Box.createHorizontalStrut(20));
+        infoTextPanel.add(portLabel1);
+        infoTextPanel.add(Box.createHorizontalStrut(10));
+        infoPanel.add(infoTextPanel);
+
+        // Hide text initially
+        infoTextPanel.setVisible(false);
+
+
+        showAddrBox.addActionListener(e -> {
+            infoTextPanel.setVisible(showAddrBox.isSelected());
+            chat.revalidate();
+            chat.repaint();
+        });
+
+        joinButton2.addActionListener(e -> { // this is actually the join button in the room join screen but if i dont put it here an error happens
+            String ipText = ip.getText();
+            String portText = port1.getText();
+            String userText = username.getText();
+            if (!ipText.isEmpty() && !portText.isEmpty() && !userText.isEmpty()) {
+                try {
+                    int portNumber = Integer.parseInt(portText);
+                    new Thread(() -> {
+                        try {
+                            UDPClient.runClient(ipText, portNumber, userText);
+                        } catch (LineUnavailableException ex) {
+                            JOptionPane.showMessageDialog(frame, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                            CardLayout cl = (CardLayout)(cards.getLayout());
+                            cl.show(cards, "selectScreen");
+                        }
+                    }).start();
+                    CardLayout cl = (CardLayout)(cards.getLayout());
+                    cl.show(cards, "chat");
+                    ipLabel.setText("IP: " + ipText);
+                    portLabel1.setText("Port: " + portNumber);
+                } catch (NumberFormatException ex) {
+                    System.err.println("Port is not an integer");
+                    JOptionPane.showMessageDialog(roomJoin, "Please enter a valid Integer for the Port.", "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                }
+            } else if (ipText.isEmpty()) {
+                JOptionPane.showMessageDialog(roomJoin, "Please enter an IP", "Invalid IP", JOptionPane.ERROR_MESSAGE);
+            } else if (portText.isEmpty()) {
+                JOptionPane.showMessageDialog(roomJoin, "Please enter a Port", "Invalid Port", JOptionPane.ERROR_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(roomJoin, "Please enter a Username", "Invalid Username", JOptionPane.ERROR_MESSAGE);
+            }
+        });
 
         chat.add(topBar1);
+
+        chat.add(infoPanel, BorderLayout.WEST);
 
         JPanel mainPanel1 = new JPanel(new BorderLayout(10, 10));
         mainPanel1.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -336,8 +378,8 @@ public class GUI {
 
         // VC Buttons
         JPanel vcButtonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-        JButton joinButton = new JButton("Join VC");
-        JButton leaveButton = new JButton("Leave VC");
+        JButton joinButton = new JButton("Join");
+        JButton leaveButton = new JButton("Leave");
         JButton muteButton = new JButton("Mute");
         JButton deafButton = new JButton("Deaf");
         vcButtonsPanel.add(joinButton);
@@ -356,6 +398,8 @@ public class GUI {
 
         leaveButton.addActionListener(e -> {
             UDPClient.sendMessage("/vc leave");
+            muteButton.setText("Mute");
+            deafButton.setText("Deaf");
             vcButtonsPanel.removeAll();
             vcButtonsPanel.add(joinButton);
             vcButtonsPanel.revalidate();
@@ -370,6 +414,24 @@ public class GUI {
         deafButton.addActionListener(e -> {
             UDPClient.sendMessage("/vc deaf");
             deafButton.setText(deafButton.getText().equals("Deaf") ? "Undeaf" : "Deaf");
+        });
+
+        backButton1.addActionListener(e -> {
+            muteButton.setText("Mute");
+            deafButton.setText("Deaf");
+            vcButtonsPanel.removeAll();
+            vcButtonsPanel.add(joinButton);
+            vcButtonsPanel.revalidate();
+            vcButtonsPanel.repaint();
+            CardLayout cl = (CardLayout)(cards.getLayout());
+            cl.show(cards, "selectScreen");
+            UDPClient.disconnect("Closed by User");
+
+            clearForm(roomJoin);
+            clearForm(serverConfig);
+            authKeyRow.setVisible(false);
+            clearForm(chat);
+            clearForm(server);
         });
 
         // Combine top & bottom in right panel
@@ -417,8 +479,8 @@ public class GUI {
 
         // RIGHT: spacing to keep title centered
         JPanel rightPanel3 = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        JLabel portLabel = new JLabel("Port: " + portNumber);
-        rightPanel3.add(portLabel);
+        JLabel portLabel2 = new JLabel("Port: " + portNumber);
+        rightPanel3.add(portLabel2);
         topBar2.add(rightPanel3, BorderLayout.EAST);
 
         server.add(topBar2);
@@ -439,9 +501,9 @@ public class GUI {
         mainPanel2.add(logPanel, BorderLayout.CENTER);
 
         // ===== RIGHT PANEL (Users + VC Users) =====
-        JPanel rightPanel4 = new JPanel();
-        rightPanel4.setLayout(new BorderLayout(5, 5));
-        rightPanel4.setPreferredSize(new Dimension(250, 300));
+        JPanel rightPanel5 = new JPanel();
+        rightPanel5.setLayout(new BorderLayout(5, 5));
+        rightPanel5.setPreferredSize(new Dimension(250, 300));
 
         // Top: User list
         JPanel userPanel2 = new JPanel(new BorderLayout());
@@ -460,10 +522,10 @@ public class GUI {
         vcPanel2.add(vcScroll2, BorderLayout.CENTER);
 
         // Combine top & bottom in right panel
-        rightPanel4.add(userPanel2, BorderLayout.CENTER);
-        rightPanel4.add(vcPanel2, BorderLayout.SOUTH);
+        rightPanel5.add(userPanel2, BorderLayout.CENTER);
+        rightPanel5.add(vcPanel2, BorderLayout.SOUTH);
 
-        mainPanel2.add(rightPanel4, BorderLayout.EAST);
+        mainPanel2.add(rightPanel5, BorderLayout.EAST);
 
         // Add main panel to server panel
         server.add(mainPanel2);
@@ -501,7 +563,7 @@ public class GUI {
                     }
                     CardLayout cl = (CardLayout)(cards.getLayout());
                     cl.show(cards, "server");
-                    portLabel.setText("Port: " + portNumber);
+                    portLabel2.setText("Port: " + portNumber);
                 } catch (NumberFormatException ex) {
                     System.out.println("Port is not an integer");
                     JOptionPane.showMessageDialog(serverConfig, "Please enter a valid Integer for the Port", "Invalid Port", JOptionPane.ERROR_MESSAGE);
@@ -521,6 +583,12 @@ public class GUI {
             }
             @Override
             public void onDisconnect(String reason) {
+                muteButton.setText("Mute");
+                deafButton.setText("Deaf");
+                vcButtonsPanel.removeAll();
+                vcButtonsPanel.add(joinButton);
+                vcButtonsPanel.revalidate();
+                vcButtonsPanel.repaint();
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(frame, "Disconnected: " + reason, "Disconnected", JOptionPane.WARNING_MESSAGE));
                 CardLayout cl = (CardLayout)(cards.getLayout());
                 cl.show(cards, "roomJoin");
