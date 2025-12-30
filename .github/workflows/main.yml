@@ -18,7 +18,6 @@ jobs:
         with:
           ref: release
           path: main-repo
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Step 2: Setup Java
       - name: Setup Java
