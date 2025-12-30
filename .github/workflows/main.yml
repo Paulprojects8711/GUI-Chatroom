@@ -15,6 +15,7 @@ jobs:
         with:
           ref: main
           path: main-repo  # check it out into subfolder
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Step 2: Setup Java
       - name: Setup Java
