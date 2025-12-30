@@ -30,8 +30,8 @@ jobs:
       # Step 3: Build Java project
       - name: Build project
         run: |
-          chmod +x ./GUI-Chatroom/gradlew
-          ./GUI-Chatroom/gradlew build
+          chmod +x ./main-repo/GUI-Chatroom/gradlew
+          ./main-repo/GUI-Chatroom/gradlew build
 
       # Step 4: Setup default-key branch as a git worktree
       - name: Setup default-key branch
@@ -57,7 +57,7 @@ jobs:
       - name: Generate new default key
         run: |
           java -cp main-repo/build/classes/java/main org.paul8711gamezz.helpers.KeyGenerator ${{ env.version }} > default-key/default_key.json
-        working-directory: ./main-repo
+        working-directory: ./main-repo/GUI-Chatroom
 
       # Step 7: Commit and push to default-key branch
       - name: Commit and push
