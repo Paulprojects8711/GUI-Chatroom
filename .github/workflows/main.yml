@@ -1,0 +1,71 @@
+name: Rotate Default Key
+
+on:
+  workflow_dispatch: # manual trigger
+  schedule:
+    - cron: '0 0 * * 1' # weekly on Monday at 00:00 UTC
+    # - cron: '0 0 1 * *' # monthly on 1st day
+    # - cron: '0 0 * * *' # daily at 00:00 UTC
+
+jobs:
+  rotate-key:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout main branch (Java code)
+      - name: Checkout main branch
+        uses: actions/checkout@v3
+        with:
+          ref: release
+          path: main-repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 2: Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Step 3: Build Java project
+      - name: Build project
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build
+        working-directory: ./main-repo
+
+      # Step 4: Setup default-key branch as a git worktree
+      - name: Setup default-key branch
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE/main-repo
+          cd main-repo
+          git fetch origin default-key
+          git worktree add ../default-key default-key
+
+      # Step 5: Determine new version
+      - name: Read previous version
+        id: version
+        run: |
+          if [ -f default-key/default_key.json ]; then
+            VERSION=$(jq '.version' default-key/default_key.json)
+            NEW_VERSION=$((VERSION + 1))
+          else
+            NEW_VERSION=1
+          fi
+          echo "version=$NEW_VERSION" >> $GITHUB_ENV
+
+      # Step 6: Generate new key with Java KeyGenerator
+      - name: Generate new default key
+        run: |
+          java -cp main-repo/build/classes/java/main org.paul8711gamezz.helpers.KeyGenerator ${{ env.version }} > default-key/default_key.json
+        working-directory: ./main-repo
+
+      # Step 7: Commit and push to default-key branch
+      - name: Commit and push
+        run: |
+          cd default-key
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add default_key.json
+          git commit -m "Rotate default key to version ${{ env.version }}" || echo "No changes to commit"
+          git push origin default-key
