@@ -57,8 +57,8 @@ jobs:
       # Step 6: Generate new key with Java KeyGenerator
       - name: Generate new default key
         run: |
-          java -cp main-repo/build/classes/java/main org.paul8711gamezz.helpers.KeyGenerator ${{ env.version }} > default-key/default_key.json
-        working-directory: ./main-repo/GUI-Chatroom
+          java -cp main-repo/GUI-Chatroom/build/classes/java/main org.paul8711gamezz.helpers.KeyGenerator ${{ env.version }} > default-key/default_key.json
+        working-directory: ./main-repo
 
       # Step 7: Commit and push to default-key branch
       - name: Commit and push
