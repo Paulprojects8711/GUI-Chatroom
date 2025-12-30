@@ -30,8 +30,8 @@ jobs:
       # Step 3: Build Java project
       - name: Build project
         run: |
-          chmod +x ./main-repo/GUI-Chatroom/gradlew
-          ./main-repo/GUI-Chatroom/gradlew build
+          chmod +x ./GUI-Chatroom/gradlew
+          ./GUI-Chatroom/gradlew build
 
       # Step 4: Setup default-key branch as a git worktree
       - name: Setup default-key branch
