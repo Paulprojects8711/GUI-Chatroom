@@ -27,9 +27,13 @@ jobs:
           java-version: '17'
 
       # Step 3: Build the project
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+        working-directory: ./main-repo
+      
       - name: Build project
         run: ./gradlew build
-        working-directory: ./  # root repo
+        working-directory: ./main-repo
 
       # Step 4: Switch to default-key branch
       - name: Switch to default-key branch
