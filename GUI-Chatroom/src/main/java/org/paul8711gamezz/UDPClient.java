@@ -10,14 +10,18 @@ import java.util.Arrays;
 import java.util.Scanner;
 import javax.sound.sampled.*;
 import java.io.IOException;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import static org.paul8711gamezz.helpers.AESUnicode.*;
+import static org.paul8711gamezz.helpers.DefaultKeyManager.getDefaultKey;
 
 public class UDPClient {
     public static SourceDataLine speaker;
     public static boolean inVC = false;
     public static String KEY;
     public static String SALT;
+    public static String DEFAULT_KEY = "";
     public static long lastServerPing = System.currentTimeMillis();
 
     public static boolean mute = false;
@@ -44,6 +48,7 @@ public class UDPClient {
     }
     public static void handleDisconnect(String reason) {
         UDPClient.KEY = null;
+        UDPClient.SALT = null;
         if (uiHandler != null) uiHandler.onDisconnect(reason);
         else System.out.println("Disconnected" + reason);
     }
@@ -104,7 +109,7 @@ public class UDPClient {
                 }
                 return;
             }
-            client_send(IP, port, clientSocket, "chat", encrypt(msg, UDPClient.SALT, UDPClient.KEY));
+            client_send(IP, port, clientSocket, "chat", encrypt(msg, UDPClient.SALT, UDPClient.KEY.isEmpty() ? UDPClient.DEFAULT_KEY : UDPClient.KEY));
         } catch (Exception e) {
             handleError(e.getMessage());
         }
@@ -132,12 +137,18 @@ public class UDPClient {
                 handleError("Could not connect to server");
             }
 
+            JsonObject keyData = getDefaultKey();
+            if (keyData != null) {
+                UDPClient.DEFAULT_KEY = keyData.get("key").getAsString();
+            } else {
+                handleError("Could not download key");
+            }
             client_send(IP, port, clientSocket, "join", username);
 
-            // wait for SK from server (blocking)
+            // wait for salt from server (blocking)
             long start = System.currentTimeMillis();
-            long waitTimeoutMs = 10000; // 10s max wait for SK
-            while (UDPClient.KEY == null && !clientSocket.isClosed()) {
+            long waitTimeoutMs = 10000; // 10s max wait for salt
+            while (UDPClient.SALT == null && !clientSocket.isClosed()) {
                 try {
                     String data = client_receive(clientSocket);
                     Thread.sleep(50);
@@ -148,6 +159,7 @@ public class UDPClient {
                                 start = System.currentTimeMillis();
                                 if (uiHandler != null) {
                                     uiHandler.onAuthRequest(authKey -> {
+                                        UDPClient.KEY = authKey;
                                         client_send(IP, port, clientSocket, "auth", authKey);
                                     });
                                 }
@@ -345,7 +357,7 @@ public class UDPClient {
                 String header = new String(packetData, 0, 6);
                 if (header.equals("voice|") && !deaf) {
                     byte[] audio = Arrays.copyOfRange(packetData, 6, packetLength);
-                    byte[] decryptedAudio = decryptBytes(audio, UDPClient.SALT, UDPClient.KEY);
+                    byte[] decryptedAudio = decryptBytes(audio, UDPClient.SALT, UDPClient.KEY.isEmpty() ? UDPClient.DEFAULT_KEY : UDPClient.KEY);
 
                     assert decryptedAudio != null;
                     speaker.write(decryptedAudio, 0, decryptedAudio.length);
@@ -366,11 +378,10 @@ public class UDPClient {
                     String[] splitData = data.split(": ", 2);
                     String message = splitData[1];
                     String sender = splitData[0] + ": ";
-                    return sender + decrypt(message, UDPClient.SALT, UDPClient.KEY);
-                } else if (type.equals("sk")) {
-                    String[] splitSK = data.split("\\|", 2);
-                    UDPClient.SALT = splitSK[0];
-                    UDPClient.KEY = splitSK[1];
+                return sender + decrypt(message, UDPClient.SALT, UDPClient.KEY.isEmpty() ? UDPClient.DEFAULT_KEY : UDPClient.KEY);
+                } else if (type.equals("salt")) {
+                    UDPClient.SALT = data;
+                    if (UDPClient.KEY == null) UDPClient.KEY = "";
                 } else if (type.equals("err")) {
                     clientSocket.close();
                     handleError(data);
@@ -459,7 +470,7 @@ public class UDPClient {
                     if (bytesRead > 0) {
                         byte[] audioData = Arrays.copyOf(audioBuffer, bytesRead);
 
-                        byte[] encryptedAudio = encryptBytes(audioData, UDPClient.SALT, UDPClient.KEY);
+                        byte[] encryptedAudio = encryptBytes(audioData, UDPClient.SALT, UDPClient.KEY.isEmpty() ? UDPClient.DEFAULT_KEY : UDPClient.KEY);
                         assert encryptedAudio != null;
                         byte[] sendData = new byte[headerBytes.length + encryptedAudio.length];
                         System.arraycopy(headerBytes, 0, sendData, 0, headerBytes.length);
@@ -480,6 +491,7 @@ public class UDPClient {
         try {
             if (clientSocket != null && !clientSocket.isClosed()) {
                 UDPClient.KEY = null;
+                UDPClient.SALT = null;
                 client_send(IP, port, clientSocket, "leave", username);
                 clientSocket.close();
             }
@@ -492,4 +504,6 @@ public class UDPClient {
 /*
 TODO:
  - mobile app
+ - automatic updates
+ - port to python
  */

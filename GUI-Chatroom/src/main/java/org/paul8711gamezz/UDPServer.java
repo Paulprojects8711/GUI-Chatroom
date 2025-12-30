@@ -17,7 +17,6 @@ public class UDPServer {
     private static final SecureRandom random = new SecureRandom();
 
     private static final String SALT = genSK(32);
-    private static final String KEY = genSK(32);
 
     public static DatagramSocket serverSocket;
 
@@ -152,7 +151,7 @@ public class UDPServer {
                             sendToSingle(serverSocket, clientID, "auth|request", lastSent);
                         } else {
                             handleLog("User " + data + " joined");
-                            sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
+                            sendToSingle(serverSocket, clientID, "salt|" + UDPServer.SALT, lastSent);
                             broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
                             broadcastUserList(serverSocket, userMap);
                             broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
@@ -174,7 +173,7 @@ public class UDPServer {
                     } else {
                         sendToSingle(serverSocket, clientID, "auth|ok", lastSent);
                         handleLog("User " + userMap.get(clientID) + " joined");
-                        sendToSingle(serverSocket, clientID, "sk|" + UDPServer.SALT + "|" + UDPServer.KEY, lastSent);
+                        sendToSingle(serverSocket, clientID, "salt|" + UDPServer.SALT, lastSent);
                         broadcast(serverSocket, userMap, "join|" + "User " + userMap.get(clientID) + " joined");
                         broadcastUserList(serverSocket, userMap);
                         broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
