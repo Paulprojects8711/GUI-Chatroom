@@ -2,6 +2,7 @@
 An end-to-end encrypted Graphical User Interface Chatroom
 
 ### Notice
-- Passworded rooms are as strong as the password. Weak passwords are guessable.
-- Rooms without a custom password use a default one, making them less secure.
-- Messages are not saved and will be deleted once the server closes.
+- Passworded rooms are only as secure as the password. Strong, unique passwords are recommended.
+- Rooms without a custom password use a fixed default key, which provides minimal protection and should not be considered fully secure.
+- All messages are ephemeral and will be deleted when the server closes; no chat history is stored.
+- This chat application is intended for casual use with friends and is not designed for highly sensitive communications.
