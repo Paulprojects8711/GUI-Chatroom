@@ -1,6 +1,6 @@
 package org.paul8711gamezz;
 
-// gui imports
+// imports
 import com.formdev.flatlaf.FlatDarkLaf;
 
 import javax.sound.sampled.LineUnavailableException;
@@ -8,6 +8,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.lang.reflect.Type;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -102,7 +104,7 @@ public class GUI {
 
         selectScreen.add(Box.createVerticalStrut(50));
 
-        JLabel versionLabel = new JLabel("v1.1", SwingConstants.CENTER);
+        JLabel versionLabel = new JLabel("v1.2", SwingConstants.CENTER);
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         versionLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         selectScreen.add(versionLabel);
@@ -235,41 +237,41 @@ public class GUI {
         topBar1.add(titleLabel2, BorderLayout.CENTER);
 
         // ===== RIGHT SPACER =====
-        JPanel rightSpacer = new JPanel();
-        rightSpacer.setPreferredSize(leftPanel1.getPreferredSize());
-        topBar1.add(rightSpacer, BorderLayout.EAST);
+        JPanel rightSpacer1 = new JPanel();
+        rightSpacer1.setPreferredSize(leftPanel1.getPreferredSize());
+        topBar1.add(rightSpacer1, BorderLayout.EAST);
 
 
-        JPanel infoPanel = new JPanel();
-        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.X_AXIS));
+        JPanel infoPanel1 = new JPanel();
+        infoPanel1.setLayout(new BoxLayout(infoPanel1, BoxLayout.X_AXIS));
 
         // Checkbox (fixed position)
-        JCheckBox showAddrBox = new JCheckBox("Show connection details");
-        showAddrBox.setFont(new Font("Arial", Font.BOLD, 12));
-        infoPanel.add(showAddrBox);
-        infoPanel.add(Box.createVerticalStrut(10));
+        JCheckBox showAddrBox1 = new JCheckBox("Show connection details");
+        showAddrBox1.setFont(new Font("Arial", Font.BOLD, 12));
+        infoPanel1.add(showAddrBox1);
+        infoPanel1.add(Box.createVerticalStrut(10));
 
         // Stacked IP + Port
-        JPanel infoTextPanel = new JPanel();
-        infoTextPanel.setLayout(new BoxLayout(infoTextPanel, BoxLayout.X_AXIS));
+        JPanel infoTextPanel1 = new JPanel();
+        infoTextPanel1.setLayout(new BoxLayout(infoTextPanel1, BoxLayout.X_AXIS));
 
-        JLabel ipLabel = new JLabel("IP: ");
+        JLabel ipLabel1 = new JLabel("IP: ");
         JLabel portLabel1 = new JLabel("Port: ");
-        ipLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        ipLabel1.setFont(new Font("Arial", Font.BOLD, 12));
         portLabel1.setFont(new Font("Arial", Font.BOLD, 12));
 
-        infoTextPanel.add(ipLabel);
-        infoTextPanel.add(Box.createHorizontalStrut(20));
-        infoTextPanel.add(portLabel1);
-        infoTextPanel.add(Box.createHorizontalStrut(10));
-        infoPanel.add(infoTextPanel);
+        infoTextPanel1.add(ipLabel1);
+        infoTextPanel1.add(Box.createHorizontalStrut(20));
+        infoTextPanel1.add(portLabel1);
+        infoTextPanel1.add(Box.createHorizontalStrut(10));
+        infoPanel1.add(infoTextPanel1);
 
         // Hide text initially
-        infoTextPanel.setVisible(false);
+        infoTextPanel1.setVisible(false);
 
 
-        showAddrBox.addActionListener(e -> {
-            infoTextPanel.setVisible(showAddrBox.isSelected());
+        showAddrBox1.addActionListener(e -> {
+            infoTextPanel1.setVisible(showAddrBox1.isSelected());
             chat.revalidate();
             chat.repaint();
         });
@@ -292,7 +294,7 @@ public class GUI {
                     }).start();
                     CardLayout cl = (CardLayout)(cards.getLayout());
                     cl.show(cards, "chat");
-                    ipLabel.setText("IP: " + ipText);
+                    ipLabel1.setText("IP: " + ipText);
                     portLabel1.setText("Port: " + portNumber);
                 } catch (NumberFormatException ex) {
                     System.err.println("Port is not an integer");
@@ -309,7 +311,7 @@ public class GUI {
 
         chat.add(topBar1);
 
-        chat.add(infoPanel, BorderLayout.WEST);
+        chat.add(infoPanel1, BorderLayout.WEST);
 
         JPanel mainPanel1 = new JPanel(new BorderLayout(10, 10));
         mainPanel1.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -381,7 +383,7 @@ public class GUI {
         vcPanel1.add(Box.createVerticalStrut(5));
 
         // VC Buttons
-        JPanel vcButtonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        JPanel vcButtonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
         JButton joinButton = new JButton("Join");
         JButton leaveButton = new JButton("Leave");
         JButton muteButton = new JButton("Mute");
@@ -481,13 +483,49 @@ public class GUI {
         titleLabel3.setPreferredSize(new Dimension(titleLabel3.getPreferredSize().width, 25));
         topBar2.add(titleLabel3, BorderLayout.CENTER);
 
-        // RIGHT: spacing to keep title centered
-        JPanel rightPanel3 = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        JLabel portLabel2 = new JLabel("Port: " + portNumber);
-        rightPanel3.add(portLabel2);
-        topBar2.add(rightPanel3, BorderLayout.EAST);
+        // ===== RIGHT SPACER =====
+        JPanel rightSpacer2 = new JPanel();
+        rightSpacer2.setPreferredSize(leftPanel2.getPreferredSize());
+        topBar2.add(rightSpacer1, BorderLayout.EAST);
+
+
+        JPanel infoPanel2 = new JPanel();
+        infoPanel2.setLayout(new BoxLayout(infoPanel2, BoxLayout.X_AXIS));
+
+        // Checkbox (fixed position)
+        JCheckBox showAddrBox2 = new JCheckBox("Show connection details");
+        showAddrBox2.setFont(new Font("Arial", Font.BOLD, 12));
+        infoPanel2.add(showAddrBox2);
+        infoPanel2.add(Box.createVerticalStrut(10));
+
+        // Stacked IP + Port
+        JPanel infoTextPanel2 = new JPanel();
+        infoTextPanel2.setLayout(new BoxLayout(infoTextPanel2, BoxLayout.X_AXIS));
+
+        JLabel ipLabel2 = new JLabel("IP: ");
+        JLabel portLabel2 = new JLabel("Port: ");
+        ipLabel2.setFont(new Font("Arial", Font.BOLD, 12));
+        portLabel2.setFont(new Font("Arial", Font.BOLD, 12));
+
+        infoTextPanel2.add(ipLabel2);
+        infoTextPanel2.add(Box.createHorizontalStrut(20));
+        infoTextPanel2.add(portLabel2);
+        infoTextPanel2.add(Box.createHorizontalStrut(10));
+        infoPanel2.add(infoTextPanel2);
+
+        // Hide text initially
+        infoTextPanel2.setVisible(false);
+
+
+        showAddrBox2.addActionListener(e -> {
+            infoTextPanel2.setVisible(showAddrBox2.isSelected());
+            server.revalidate();
+            server.repaint();
+        });
 
         server.add(topBar2);
+
+        server.add(infoPanel2, BorderLayout.WEST);
 
         JPanel mainPanel2 = new JPanel(new BorderLayout(10, 10));
         mainPanel2.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -567,10 +605,16 @@ public class GUI {
                     }
                     CardLayout cl = (CardLayout)(cards.getLayout());
                     cl.show(cards, "server");
+                    userListModel2.clear();
+                    vcUserListModel2.clear();
+                    ipLabel2.setText("IP: " + InetAddress.getLocalHost().getHostAddress());
                     portLabel2.setText("Port: " + portNumber);
                 } catch (NumberFormatException ex) {
                     System.out.println("Port is not an integer");
                     JOptionPane.showMessageDialog(serverConfig, "Please enter a valid Integer for the Port", "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                } catch (UnknownHostException ex) {
+                    System.out.println("Error when getting IP");
+                    JOptionPane.showMessageDialog(serverConfig, "Error when getting IP: " + ex, "Error", JOptionPane.ERROR_MESSAGE);
                 }
             } else {
                 JOptionPane.showMessageDialog(serverConfig, "Please enter a Port", "Invalid Port", JOptionPane.ERROR_MESSAGE);
