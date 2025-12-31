@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "org.paul8711gamezz"
-version = "1.2"
+version = "1.2-SNAPSHOT"
 
 repositories {
     mavenCentral()
