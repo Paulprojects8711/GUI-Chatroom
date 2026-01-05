@@ -1,16 +1,15 @@
 package org.paul8711gamezz;
 
 // networking imports
+
+import com.google.gson.JsonObject;
 import org.paul8711gamezz.helpers.ClientUIHandler;
 
-import java.net.*;
-
-// other imports
-import java.util.Arrays;
-import java.util.Scanner;
 import javax.sound.sampled.*;
 import java.io.IOException;
-import com.google.gson.JsonObject;
+import java.net.*;
+import java.util.Arrays;
+import java.util.Scanner;
 
 import static org.paul8711gamezz.helpers.AESUnicode.*;
 import static org.paul8711gamezz.helpers.DefaultKeyManager.getDefaultKey;

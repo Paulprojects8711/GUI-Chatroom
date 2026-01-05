@@ -1,7 +1,15 @@
 package org.paul8711gamezz;
 
 // imports
+
 import com.formdev.flatlaf.FlatDarkLaf;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
+import org.paul8711gamezz.helpers.ClientUIHandler;
+import org.paul8711gamezz.helpers.ServerUIHandler;
+import org.paul8711gamezz.helpers.UpdateManager;
+import org.paul8711gamezz.helpers.VCInfo;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
@@ -11,18 +19,11 @@ import java.lang.reflect.Type;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map;
-import java.util.function.Consumer;
 import java.util.List;
-
-// chatroom imports
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import org.paul8711gamezz.helpers.ClientUIHandler;
-import org.paul8711gamezz.helpers.ServerUIHandler;
-import org.paul8711gamezz.helpers.VCInfo;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 public class GUI {
     private static int portNumber;
@@ -41,6 +42,9 @@ public class GUI {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(600, 400);
         frame.setLayout(new BorderLayout(10, 10));
+
+        // Check for updates in the background
+        Executors.newSingleThreadExecutor().submit(() -> checkForUpdates());
 
         JPanel cards = new JPanel(new CardLayout());
 
@@ -810,5 +814,56 @@ public class GUI {
                 clearForm(child);
             }
         }
+    }
+
+    private static void checkForUpdates() {
+        UpdateManager.checkForUpdate((latestVersion, localVersion, releaseJson) -> {
+            SwingUtilities.invokeLater(() -> {
+                Object[] options = {"Download Now", "Later"};
+                int choice = JOptionPane.showOptionDialog(
+                        null,
+                        "A new version is available: " + latestVersion,
+                        "Update Available",
+                        JOptionPane.DEFAULT_OPTION,
+                        JOptionPane.INFORMATION_MESSAGE,
+                        null,
+                        options,
+                        options[0]
+                );
+
+                if (choice == 0) { // Download Now
+                    showDownloadProgress(latestVersion, localVersion, releaseJson);
+                }
+            });
+        });
+    }
+
+    private static void showDownloadProgress(String latestVersion, String oldVersion, JsonObject releaseJson) {
+        JDialog progressDialog = new JDialog((Frame) null, "Downloading Update", true);
+        JProgressBar progressBar = new JProgressBar(0, 100);
+        progressBar.setStringPainted(true);
+
+        progressDialog.setLayout(new BorderLayout());
+        progressDialog.add(new JLabel("Downloading version " + latestVersion + "..."), BorderLayout.NORTH);
+        progressDialog.add(progressBar, BorderLayout.CENTER);
+        progressDialog.setSize(400, 120);
+        progressDialog.setLocationRelativeTo(null);
+        progressDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        progressDialog.setResizable(false);
+
+        Executors.newSingleThreadExecutor().submit(() -> {
+            boolean success = UpdateManager.downloadUpdate(latestVersion, oldVersion, releaseJson, percent -> {
+                SwingUtilities.invokeLater(() -> progressBar.setValue(percent));
+            });
+
+            SwingUtilities.invokeLater(() -> {
+                progressDialog.dispose();
+                if (success) UpdateManager.restartJar(latestVersion);
+                else JOptionPane.showMessageDialog(null,
+                        "Failed to download update.", "Update Failed", JOptionPane.ERROR_MESSAGE);
+            });
+        });
+
+        progressDialog.setVisible(true);
     }
 }

@@ -1,16 +1,16 @@
 package org.paul8711gamezz;
 
 import com.google.gson.Gson;
-import org.paul8711gamezz.helpers.ServerUIHandler;
 import org.paul8711gamezz.helpers.Hash;
+import org.paul8711gamezz.helpers.ServerUIHandler;
 import org.paul8711gamezz.helpers.VCInfo;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.*;
 import java.security.SecureRandom;
+import java.util.*;
 
 public class UDPServer {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
