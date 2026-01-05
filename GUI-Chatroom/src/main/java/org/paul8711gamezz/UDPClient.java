@@ -1,17 +1,15 @@
 package org.paul8711gamezz;
 
 // networking imports
+
+import com.google.gson.JsonObject;
 import org.paul8711gamezz.helpers.ClientUIHandler;
 
-import java.net.*;
-
-// other imports
-import java.util.Arrays;
-import java.util.Scanner;
 import javax.sound.sampled.*;
 import java.io.IOException;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import java.net.*;
+import java.util.Arrays;
+import java.util.Scanner;
 
 import static org.paul8711gamezz.helpers.AESUnicode.*;
 import static org.paul8711gamezz.helpers.DefaultKeyManager.getDefaultKey;
@@ -23,6 +21,7 @@ public class UDPClient {
     public static String SALT;
     public static String DEFAULT_KEY = "";
     public static long lastServerPing = System.currentTimeMillis();
+    public static boolean authRequestReceived = false;
 
     public static boolean mute = false;
     public static boolean deaf = false;
@@ -34,7 +33,6 @@ public class UDPClient {
 
     public static TargetDataLine microphone;
     public static AudioFormat format;
-
 
     public static ClientUIHandler uiHandler;
 
@@ -134,7 +132,7 @@ public class UDPClient {
         try {
             clientSocket = client_connect(IP, port);
             if (clientSocket == null) {
-                handleError("Could not connect to server");
+                handleDisconnect("Could not connect to server");
             }
 
             JsonObject keyData = getDefaultKey();
@@ -156,6 +154,7 @@ public class UDPClient {
                     if (data != null) {
                         switch (data) {
                             case "auth|request" -> {
+                                authRequestReceived = true;
                                 start = System.currentTimeMillis();
                                 if (uiHandler != null) {
                                     uiHandler.onAuthRequest(authKey -> {
@@ -165,17 +164,19 @@ public class UDPClient {
                                 }
                             }
                             case "auth|wrong" -> {
+                                authRequestReceived = false;
                                 start = System.currentTimeMillis();
                                 disconnect("Wrong Auth Key");
                             }
                             case "auth|ok" -> {
+                                authRequestReceived = false;
                                 if (uiHandler != null) {
                                     uiHandler.onAuthCorrect();
                                 }
                             }
                         }
                     } else {
-                        if (System.currentTimeMillis() - start > waitTimeoutMs && !clientSocket.isClosed()) {
+                        if (!authRequestReceived && System.currentTimeMillis() - start > waitTimeoutMs && !clientSocket.isClosed()) {
                             disconnect("Server timeout");
                             break;
                         }
@@ -384,7 +385,11 @@ public class UDPClient {
                     if (UDPClient.KEY == null) UDPClient.KEY = "";
                 } else if (type.equals("err")) {
                     clientSocket.close();
-                    handleError(data);
+                    if (data.equals("Username already in use")) {
+                        handleDisconnect(data);
+                    } else {
+                        handleError(data);
+                    }
                 } else if (type.equals("pong")) {
                     UDPClient.lastServerPing = System.currentTimeMillis();
                     return null;
@@ -500,10 +505,3 @@ public class UDPClient {
         handleDisconnect(reason);
     }
 }
-
-/*
-TODO:
- - mobile app
- - automatic updates
- - port to python
- */

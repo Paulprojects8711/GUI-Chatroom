@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "org.paul8711gamezz"
-version = "1.1"
+version = "1.2"
 
 repositories {
     mavenCentral()
@@ -24,7 +24,10 @@ tasks.test {
 tasks.register<Jar>("fatJar") {
     archiveBaseName.set("GUI-Chatroom")
     manifest {
-        attributes["Main-Class"] = "org.paul8711gamezz.GUI"
+        attributes(
+            "Main-Class" to "org.paul8711gamezz.GUI",
+            "Implementation-Version" to project.version
+        )
     }
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
