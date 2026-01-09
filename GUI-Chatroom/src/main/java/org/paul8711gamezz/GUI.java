@@ -1,17 +1,11 @@
 package org.paul8711gamezz;
 
-// imports
-
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import org.paul8711gamezz.helpers.ClientUIHandler;
-import org.paul8711gamezz.helpers.ServerUIHandler;
-import org.paul8711gamezz.helpers.UpdateManager;
-import org.paul8711gamezz.helpers.VCInfo;
+import org.paul8711gamezz.helpers.*;
 
-import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
@@ -27,6 +21,7 @@ import java.util.function.Consumer;
 
 public class GUI {
     private static int portNumber;
+    public static boolean audioIO = true;
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel(new FlatDarkLaf());
@@ -34,8 +29,10 @@ public class GUI {
             System.err.println("Failed to setup FaL");
         }
 
+        // defines the frame with its title
         JFrame frame = new JFrame("GUI-Chatroom");
 
+        // sets the icon of the window
         Image icon = Toolkit.getDefaultToolkit().getImage(GUI.class.getResource("/icon.png"));
         frame.setIconImage(icon);
 
@@ -43,7 +40,7 @@ public class GUI {
         frame.setSize(600, 400);
         frame.setLayout(new BorderLayout(10, 10));
 
-        // Check for updates in the background
+        // check for updates on launch
         Executors.newSingleThreadExecutor().submit(() -> checkForUpdates());
 
         JPanel cards = new JPanel(new CardLayout());
@@ -56,6 +53,8 @@ public class GUI {
         JPanel serverConfig = new JPanel();
         JPasswordField authKey = new JPasswordField(15);
         JPanel authKeyRow = createInputRow("Key:", authKey);
+        // vc join button
+        JButton joinButton = new JButton("Join");
 
         // back button action
         ActionListener backAction = e -> {
@@ -91,7 +90,7 @@ public class GUI {
         selectScreen.add(descLabel);
 
         // spacing
-        selectScreen.add(Box.createVerticalStrut(76));
+        selectScreen.add(Box.createVerticalStrut(50));
 
         // join btn
         JButton joinButton1 = new JButton("Join");
@@ -106,9 +105,19 @@ public class GUI {
         hostButton1.setAlignmentX(Component.CENTER_ALIGNMENT);
         selectScreen.add(hostButton1);
 
-        selectScreen.add(Box.createVerticalStrut(50));
+        // spacing
+        selectScreen.add(Box.createVerticalStrut(30));
 
-        JLabel versionLabel = new JLabel("v1.2", SwingConstants.CENTER);
+        // settings btn
+        JButton settingsButton = new JButton("Settings");
+        settingsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        settingsButton.setVisible(false);
+        selectScreen.add(settingsButton);
+
+        String version = UpdateManager.getLocalVersion();
+
+        selectScreen.add(Box.createVerticalStrut(50));
+        JLabel versionLabel = new JLabel(version, SwingConstants.CENTER);
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         versionLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         selectScreen.add(versionLabel);
@@ -132,6 +141,11 @@ public class GUI {
             cl.show(cards, "serverConfig");
         });
 
+        settingsButton.addActionListener(e -> {
+            CardLayout cl = (CardLayout)(cards.getLayout());
+            cl.show(cards, "settings");
+        });
+
         // ===========================
         // ======= JOIN SCREEN =======
         // ===========================
@@ -142,12 +156,12 @@ public class GUI {
         // spacing
         roomJoin.add(Box.createVerticalStrut(50)); // in px
 
-        // Main vertical container
+        // main container (vertical)
         JPanel inputPanel1 = new JPanel();
         inputPanel1.setLayout(new BoxLayout(inputPanel1, BoxLayout.Y_AXIS));
         inputPanel1.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Create input fields
+        // input fields
         JTextField ip = new JTextField(15);
         JTextField port1 = new JTextField(15);
         JTextField username = new JTextField(15);
@@ -182,12 +196,12 @@ public class GUI {
         // spacing
         serverConfig.add(Box.createVerticalStrut(50)); // in px
 
-        // Main vertical container
+        // main container
         JPanel inputPanel2 = new JPanel();
         inputPanel2.setLayout(new BoxLayout(inputPanel2, BoxLayout.Y_AXIS));
         inputPanel2.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Create input fields
+        // input fields
         JTextField port2 = new JTextField(15);
         JCheckBox requiresAuth = new JCheckBox("Requires Auth");
         authKeyRow.setVisible(true);
@@ -224,38 +238,43 @@ public class GUI {
         // ===========================
         chat.setLayout(new BoxLayout(chat, BoxLayout.Y_AXIS)); // vertical layout
 
-        JPanel topBar1 = new JPanel(new BorderLayout());
+        JPanel topBar1 = new JPanel();
+        topBar1.setLayout(new BoxLayout(topBar1, BoxLayout.X_AXIS));
         topBar1.setPreferredSize(new Dimension(Integer.MAX_VALUE, 35));
         topBar1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
 
-        // LEFT: Back button with padding
+        // on the left: back button
         JPanel leftPanel1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         JButton backButton1 = new JButton("Leave");
         leftPanel1.add(backButton1);
-        topBar1.add(leftPanel1, BorderLayout.WEST);
+        topBar1.add(leftPanel1);
 
-        // CENTER: title
+        topBar1.add(Box.createHorizontalGlue());
+
+        // in the middle: the title
         JLabel titleLabel2 = new JLabel("Chatroom", SwingConstants.CENTER);
         titleLabel2.setFont(new Font("Arial", Font.BOLD, 30));
-        titleLabel2.setPreferredSize(new Dimension(titleLabel2.getPreferredSize().width, 25));
-        topBar1.add(titleLabel2, BorderLayout.CENTER);
+        titleLabel2.setPreferredSize(new Dimension(titleLabel2.getPreferredSize().width, 30));
+        topBar1.add(titleLabel2);
 
-        // ===== RIGHT SPACER =====
+        topBar1.add(Box.createHorizontalGlue());
+
+        // to the right: spacing so the title stays centered
         JPanel rightSpacer1 = new JPanel();
         rightSpacer1.setPreferredSize(leftPanel1.getPreferredSize());
-        topBar1.add(rightSpacer1, BorderLayout.EAST);
+        topBar1.add(rightSpacer1);
 
 
         JPanel infoPanel1 = new JPanel();
         infoPanel1.setLayout(new BoxLayout(infoPanel1, BoxLayout.X_AXIS));
 
-        // Checkbox (fixed position)
+        // checkbox
         JCheckBox showAddrBox1 = new JCheckBox("Show connection details");
         showAddrBox1.setFont(new Font("Arial", Font.BOLD, 12));
         infoPanel1.add(showAddrBox1);
         infoPanel1.add(Box.createVerticalStrut(10));
 
-        // Stacked IP + Port
+        // ip and port display (shows if checkbox checked)
         JPanel infoTextPanel1 = new JPanel();
         infoTextPanel1.setLayout(new BoxLayout(infoTextPanel1, BoxLayout.X_AXIS));
 
@@ -270,7 +289,7 @@ public class GUI {
         infoTextPanel1.add(Box.createHorizontalStrut(10));
         infoPanel1.add(infoTextPanel1);
 
-        // Hide text initially
+        // hide first, show when checked
         infoTextPanel1.setVisible(false);
 
 
@@ -288,12 +307,14 @@ public class GUI {
                 try {
                     int portNumber = Integer.parseInt(portText);
                     new Thread(() -> {
-                        try {
-                            UDPClient.runClient(ipText, portNumber, userText);
-                        } catch (LineUnavailableException ex) {
-                            JOptionPane.showMessageDialog(frame, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                            CardLayout cl = (CardLayout)(cards.getLayout());
-                            cl.show(cards, "selectScreen");
+                        // runs the client
+                        UDPClient.runClient(ipText, portNumber, userText);
+                        if (!UDPClient.micAvailable || !UDPClient.speakerAvailable) {
+                            // if the mic or speakers are not working for some weird reason
+                            JOptionPane.showMessageDialog(frame, "Error when setting up speakers and microphone", "Error", JOptionPane.ERROR_MESSAGE);
+                            // if false you cant join vc
+                            audioIO = false;
+                            joinButton.setVisible(false);
                         }
                     }).start();
                     CardLayout cl = (CardLayout)(cards.getLayout());
@@ -320,7 +341,7 @@ public class GUI {
         JPanel mainPanel1 = new JPanel(new BorderLayout(10, 10));
         mainPanel1.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // ===== CHAT PANEL =====
+        // chat panel (text area where messages appear, send bar and button)
         JPanel chatPanel = new JPanel(new BorderLayout());
         chatPanel.setBorder(BorderFactory.createTitledBorder("Chat"));
         chatPanel.setPreferredSize(new Dimension(550, 300));
@@ -334,7 +355,7 @@ public class GUI {
         chatPanel.add(chatScroll, BorderLayout.CENTER);
 
         JPanel inputPanel = new JPanel(new BorderLayout());
-        inputPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // some padding
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // padding
 
         JTextField chatInput = new JTextField();
         JButton sendButton = new JButton("Send");
@@ -361,12 +382,12 @@ public class GUI {
             }
         });
 
-        // ===== RIGHT PANEL (Users + VC Users) =====
+        // to the right of the chat: user list and vc user list with "vc action buttons"
         JPanel rightPanel2 = new JPanel();
         rightPanel2.setLayout(new BorderLayout(5, 5));
         rightPanel2.setPreferredSize(new Dimension(250, 300));
 
-        // Top: User list
+        // on the top: user list
         JPanel userPanel1 = new JPanel(new BorderLayout());
         userPanel1.setBorder(BorderFactory.createTitledBorder("Users"));
         DefaultListModel<String> userListModel1 = new DefaultListModel<>();
@@ -374,7 +395,7 @@ public class GUI {
         JScrollPane userScroll1 = new JScrollPane(userList1);
         userPanel1.add(userScroll1, BorderLayout.CENTER);
 
-        // Bottom: VC Users
+        // on the bottom: vc user list
         JPanel vcPanel1 = new JPanel();
         vcPanel1.setLayout(new BoxLayout(vcPanel1, BoxLayout.Y_AXIS));
         vcPanel1.setBorder(BorderFactory.createTitledBorder("Voice Call"));
@@ -386,16 +407,18 @@ public class GUI {
         vcPanel1.add(vcScroll1);
         vcPanel1.add(Box.createVerticalStrut(5));
 
-        // VC Buttons
+        // "vc action buttons"
         JPanel vcButtonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
-        JButton joinButton = new JButton("Join");
         JButton leaveButton = new JButton("Leave");
         JButton muteButton = new JButton("Mute");
         JButton deafButton = new JButton("Deaf");
+        if (!audioIO) {
+            joinButton.setVisible(false);
+        }
         vcButtonsPanel.add(joinButton);
         vcPanel1.add(vcButtonsPanel);
 
-        // ===== BUTTON ACTIONS =====
+        // actions for the vc buttons
         joinButton.addActionListener(e -> {
             UDPClient.sendMessage("/vc join");
             vcButtonsPanel.removeAll();
@@ -444,13 +467,13 @@ public class GUI {
             clearForm(server);
         });
 
-        // Combine top & bottom in right panel
+        // put both top and bottom to the right panel
         rightPanel2.add(userPanel1, BorderLayout.CENTER);
         rightPanel2.add(vcPanel1, BorderLayout.SOUTH);
 
         mainPanel1.add(rightPanel2, BorderLayout.EAST);
 
-        // Add main panel to server panel
+        // add entire panel to the chat screen
         chat.add(mainPanel1);
 
         cards.add(chat, "chat");
@@ -464,7 +487,7 @@ public class GUI {
         topBar2.setPreferredSize(new Dimension(Integer.MAX_VALUE, 35));
         topBar2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
 
-        // LEFT: Back button with padding
+        // left: stop button
         JPanel leftPanel2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         JButton backButton2 = new JButton("Stop");
         backButton2.addActionListener(e -> {
@@ -481,28 +504,28 @@ public class GUI {
         leftPanel2.add(backButton2);
         topBar2.add(leftPanel2, BorderLayout.WEST);
 
-        // CENTER: title
+        // middle: title
         JLabel titleLabel3 = new JLabel("Server", SwingConstants.CENTER);
         titleLabel3.setFont(new Font("Arial", Font.BOLD, 30));
-        titleLabel3.setPreferredSize(new Dimension(titleLabel3.getPreferredSize().width, 25));
+        titleLabel3.setPreferredSize(new Dimension(titleLabel3.getPreferredSize().width, 30));
         topBar2.add(titleLabel3, BorderLayout.CENTER);
 
-        // ===== RIGHT SPACER =====
+        // right: spacing so title stay centered
         JPanel rightSpacer2 = new JPanel();
         rightSpacer2.setPreferredSize(leftPanel2.getPreferredSize());
-        topBar2.add(rightSpacer1, BorderLayout.EAST);
+        topBar2.add(rightSpacer2, BorderLayout.EAST);
 
 
         JPanel infoPanel2 = new JPanel();
         infoPanel2.setLayout(new BoxLayout(infoPanel2, BoxLayout.X_AXIS));
 
-        // Checkbox (fixed position)
+        // checkbox
         JCheckBox showAddrBox2 = new JCheckBox("Show connection details");
         showAddrBox2.setFont(new Font("Arial", Font.BOLD, 12));
         infoPanel2.add(showAddrBox2);
         infoPanel2.add(Box.createVerticalStrut(10));
 
-        // Stacked IP + Port
+        // ip and port display (we already have this at the chat screen, can we just skip this)
         JPanel infoTextPanel2 = new JPanel();
         infoTextPanel2.setLayout(new BoxLayout(infoTextPanel2, BoxLayout.X_AXIS));
 
@@ -517,7 +540,7 @@ public class GUI {
         infoTextPanel2.add(Box.createHorizontalStrut(10));
         infoPanel2.add(infoTextPanel2);
 
-        // Hide text initially
+        // hide until checkbox pressed
         infoTextPanel2.setVisible(false);
 
 
@@ -534,7 +557,7 @@ public class GUI {
         JPanel mainPanel2 = new JPanel(new BorderLayout(10, 10));
         mainPanel2.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // ===== LOG PANEL =====
+        // area for the logs to appear
         JPanel logPanel = new JPanel(new BorderLayout());
         logPanel.setBorder(BorderFactory.createTitledBorder("Log"));
         logPanel.setPreferredSize(new Dimension(550, 300));
@@ -546,12 +569,13 @@ public class GUI {
 
         mainPanel2.add(logPanel, BorderLayout.CENTER);
 
-        // ===== RIGHT PANEL (Users + VC Users) =====
+        // panel on the right where the user list and vc user list is shown
         JPanel rightPanel5 = new JPanel();
+        // i apologize for these variables here i myself am confused and dont know which is which but i am lazy
         rightPanel5.setLayout(new BorderLayout(5, 5));
         rightPanel5.setPreferredSize(new Dimension(250, 300));
 
-        // Top: User list
+        // on the top we again have the user list
         JPanel userPanel2 = new JPanel(new BorderLayout());
         userPanel2.setBorder(BorderFactory.createTitledBorder("Users"));
         DefaultListModel<String> userListModel2 = new DefaultListModel<>();
@@ -559,7 +583,7 @@ public class GUI {
         JScrollPane userScroll2 = new JScrollPane(userList2);
         userPanel2.add(userScroll2, BorderLayout.CENTER);
 
-        // Bottom: VC Users
+        // and guess what: on the bottom we have the vc user list
         JPanel vcPanel2 = new JPanel(new BorderLayout());
         vcPanel2.setBorder(BorderFactory.createTitledBorder("Voice Call"));
         DefaultListModel<String> vcUserListModel2 = new DefaultListModel<>();
@@ -567,13 +591,13 @@ public class GUI {
         JScrollPane vcScroll2 = new JScrollPane(vcList2);
         vcPanel2.add(vcScroll2, BorderLayout.CENTER);
 
-        // Combine top & bottom in right panel
+        // put both top and bottom in the same panel
         rightPanel5.add(userPanel2, BorderLayout.CENTER);
         rightPanel5.add(vcPanel2, BorderLayout.SOUTH);
 
         mainPanel2.add(rightPanel5, BorderLayout.EAST);
 
-        // Add main panel to server panel
+        // add entire panel to server screen
         server.add(mainPanel2);
 
         cards.add(server, "server");
@@ -589,6 +613,7 @@ public class GUI {
                         String authKeyText = authKey.getText();
                         new Thread(() -> {
                             try {
+                                // run server with set authkey
                                 UDPServer.runServer(portNumber, authKeyText);
                             } catch (Exception ex) {
                                 JOptionPane.showMessageDialog(frame, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -599,6 +624,7 @@ public class GUI {
                     } else {
                         new Thread(() -> {
                             try {
+                                // run server with no key
                                 UDPServer.runServer(portNumber, "");
                             } catch (Exception ex) {
                                 JOptionPane.showMessageDialog(frame, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -609,6 +635,7 @@ public class GUI {
                     }
                     CardLayout cl = (CardLayout)(cards.getLayout());
                     cl.show(cards, "server");
+                    // clear lists
                     userListModel2.clear();
                     vcUserListModel2.clear();
                     ipLabel2.setText("IP: " + InetAddress.getLocalHost().getHostAddress());
@@ -625,16 +652,75 @@ public class GUI {
             }
         });
 
+
+        // ===========================
+        // ======== Settings =========
+        // ===========================
+        JPanel settings = new JPanel();
+        settings.setLayout(new BoxLayout(settings, BoxLayout.Y_AXIS)); // vertical layout
+
+        settings.add(createTopBar("Settings", backAction));
+
+        // spacing
+        settings.add(Box.createVerticalStrut(50)); // in px
+
+        // main container (vertical)
+        JPanel settingsPanel = new JPanel();
+        settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
+        settingsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        List<String> micList = new ArrayList<>();
+        micList.add("None");
+        for (MicrophoneItem item : UDPClient.getMicrophones()) {
+            micList.add(item.name);
+        }
+        String[] micChoices = micList.toArray(new String[0]);
+        JComboBox<String> micComboBox = new JComboBox<>(micChoices);
+        JPanel micDropdown = createDropdownRow("Microphone", micComboBox);
+        settingsPanel.add(micDropdown);
+
+        settingsPanel.add(Box.createVerticalStrut(10));
+
+        List<String> speakerList = new ArrayList<>();
+        speakerList.add("None");
+        for (SpeakerItem item : UDPClient.getSpeakers()) {
+            speakerList.add(item.name);
+        }
+        String[] speakerChoices = speakerList.toArray(new String[0]);
+        JComboBox<String> speakerComboBox = new JComboBox<>(speakerChoices);
+        JPanel speakerDropdown = createDropdownRow("Speaker", speakerComboBox);
+        settingsPanel.add(speakerDropdown);
+
+        settingsPanel.setMaximumSize(settingsPanel.getPreferredSize());
+
+        settings.add(settingsPanel);
+
+        settings.add(Box.createVerticalStrut(20));
+
+        // save btn
+        JButton saveButton = new JButton("Save");
+        saveButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        settings.add(saveButton);
+
+        cards.add(settings, "settings");
+
+        saveButton.addActionListener(e -> {
+            CardLayout cl = (CardLayout)(cards.getLayout());
+            cl.show(cards, "selectScreen");
+        });
+
         // ===========================
         // ======== UIHandler ========
         // ===========================
         UDPClient.setUiHandler(new ClientUIHandler() {
             @Override
             public void onError(String msg) {
+                // if error happens display error message
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(frame, "Error: " + msg, "Error", JOptionPane.ERROR_MESSAGE));
             }
             @Override
             public void onDisconnect(String reason) {
+                // if disconnected for what ever reason reset the button texts
                 muteButton.setText("Mute");
                 deafButton.setText("Deaf");
                 vcButtonsPanel.removeAll();
@@ -647,6 +733,7 @@ public class GUI {
             }
             @Override
             public void onAuthRequest(Consumer<String> callback) {
+                // ask for auth key
                 SwingUtilities.invokeLater(() -> {
                     String key = JOptionPane.showInputDialog(frame, "Enter Auth Key:");
                     if (key != null) callback.accept(key);
@@ -654,17 +741,20 @@ public class GUI {
             }
             @Override
             public void onAuthCorrect() {
+                // yay auth key was correct
                 SwingUtilities.invokeLater(() -> {
                     JOptionPane.showMessageDialog(frame, "Auth OK");
                 });
             }
             @Override
             public void onMessage(String msg) {
+                // add chat message to chat area
                 chatArea.append(msg + "\n");
                 chatArea.setCaretPosition(chatArea.getDocument().getLength());
             }
             @Override
             public void onVCListUpdate(String VCUsers) {
+                // "translate" the json so the string in the vc list looks good
                 Gson gson = new Gson();
 
                 // Define the type for a List of Map<String, Object>
@@ -690,6 +780,7 @@ public class GUI {
             }
             @Override
             public void onUserListUpdate(String users) {
+                // update the user list with the received json
                 Gson gson = new Gson();
                 Type type = new TypeToken<List<String>>(){}.getType();
 
@@ -707,16 +798,19 @@ public class GUI {
         UDPServer.setUiHandler(new ServerUIHandler() {
             @Override
             public void onError(String msg) {
+                // show error message
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(frame, "Error: " + msg, "Error", JOptionPane.ERROR_MESSAGE));
             }
             @Override
             public void onStop(String reason) {
+                // server stopped by user probably (hopefully)
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(frame, "Disconnected: " + reason, "Disconnected", JOptionPane.WARNING_MESSAGE));
                 CardLayout cl = (CardLayout)(cards.getLayout());
                 cl.show(cards, "selectScreen");
             }
             @Override
             public void onUserListUpdate(Map<String, String> userMap) {
+                // add users to the user list
                 userListModel2.clear();
                 List<String> sortedUsers = new ArrayList<>(userMap.values());
                 Collections.sort(sortedUsers);
@@ -725,6 +819,7 @@ public class GUI {
                 }
             }
             public void onVCListUpdate(Map<String, VCInfo> vcStatus, Map<String, String> userMap) {
+                // construct the string that is shown in the vc user list
                 vcUserListModel2.clear();
                 List<Map.Entry<String, VCInfo>> sortedEntries = new ArrayList<>(vcStatus.entrySet());
                 sortedEntries.sort(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER));
@@ -740,6 +835,7 @@ public class GUI {
                 }
             }
             public void onLog(String msg) {
+                // add log message to the area
                 logArea.append(msg + "\n");
                 logArea.setCaretPosition(logArea.getDocument().getLength());
             }
@@ -750,24 +846,25 @@ public class GUI {
         frame.setVisible(true);
     }
     private static JPanel createTopBar(String title, ActionListener backAction) {
+        // constructs the top bar (because lazy)
         JPanel topBar = new JPanel(new BorderLayout());
         topBar.setPreferredSize(new Dimension(Integer.MAX_VALUE, 35));
         topBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
 
-        // LEFT: Back button with padding
+        // to the left the back button
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         JButton backButton = new JButton("Back");
         if (backAction != null) backButton.addActionListener(backAction);
         leftPanel.add(backButton);
         topBar.add(leftPanel, BorderLayout.WEST);
 
-        // CENTER: title
+        // in the middle the title
         JLabel titleLabel = new JLabel(title, SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 30));
-        titleLabel.setPreferredSize(new Dimension(titleLabel.getPreferredSize().width, 25));
+        titleLabel.setPreferredSize(new Dimension(titleLabel.getPreferredSize().width, 30));
         topBar.add(titleLabel, BorderLayout.CENTER);
 
-        // RIGHT: spacing to keep title centered
+        // to the right spacing to keep title centered
         JPanel rightSpacer = new JPanel();
         rightSpacer.setPreferredSize(leftPanel.getPreferredSize());
         topBar.add(rightSpacer, BorderLayout.EAST);
@@ -775,12 +872,13 @@ public class GUI {
         return topBar;
     }
     private static JPanel createInputRow(String labelText, JTextField field) {
+        // makes the input rows (port, ip, username that stuff)
         JPanel row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 
         JLabel label = new JLabel(labelText);
 
-        // fix label width so all rows align perfectly
+        // fix label width so all rows align
         Dimension labelSize = new Dimension(80, label.getPreferredSize().height);
         label.setPreferredSize(labelSize);
         label.setMinimumSize(labelSize);
@@ -790,12 +888,38 @@ public class GUI {
         row.add(Box.createHorizontalStrut(10));
         row.add(field);
 
-        // keep the row at a nice narrow width
+        // keep the row at a narrow width
+        row.setMaximumSize(new Dimension(300, row.getPreferredSize().height));
+
+        return row;
+    }
+    private static JPanel createDropdownRow(String labelText, JComboBox<String> comboBox) {
+        // makes the dropdown menu row (microphone select, speaker select)
+        JPanel row = new JPanel();
+        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+
+        JLabel label = new JLabel(labelText);
+
+        // fix label width so all rows align
+        Dimension labelSize = new Dimension(80, label.getPreferredSize().height);
+        label.setPreferredSize(labelSize);
+        label.setMinimumSize(labelSize);
+        label.setMaximumSize(labelSize);
+
+        // make the dropdown
+        comboBox.setVisible(true);
+
+        row.add(label);
+        row.add(Box.createHorizontalStrut(10));
+        row.add(comboBox);
+
+        // keep the row at a narrow width
         row.setMaximumSize(new Dimension(300, row.getPreferredSize().height));
 
         return row;
     }
     private static void clearForm(Component c) {
+        // "resets" the buttons and checkboxes and everything
         if (c instanceof JTextField txt) {
             txt.setText("");
         } else if (c instanceof JTextArea area) {
@@ -808,7 +932,7 @@ public class GUI {
             radio.setSelected(false);
         }
 
-        // Recursively clear children
+        // also reset the children
         if (c instanceof Container container) {
             for (Component child : container.getComponents()) {
                 clearForm(child);
@@ -817,7 +941,9 @@ public class GUI {
     }
 
     private static void checkForUpdates() {
+        // check for updates using the updatemanager
         UpdateManager.checkForUpdate((latestVersion, localVersion, releaseJson) -> {
+            // if there is one: show update dialog asking you if you want to download now or do it later
             SwingUtilities.invokeLater(() -> {
                 Object[] options = {"Download Now", "Later"};
                 int choice = JOptionPane.showOptionDialog(
@@ -839,6 +965,7 @@ public class GUI {
     }
 
     private static void showDownloadProgress(String latestVersion, String oldVersion, JsonObject releaseJson) {
+        // makes a progress bar showing how far the download is (the download is fast because the file isnt big)
         JDialog progressDialog = new JDialog((Frame) null, "Downloading Update", true);
         JProgressBar progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
@@ -856,6 +983,7 @@ public class GUI {
                 SwingUtilities.invokeLater(() -> progressBar.setValue(percent));
             });
 
+            // oh no update failed
             SwingUtilities.invokeLater(() -> {
                 progressDialog.dispose();
                 if (success) UpdateManager.restartJar(latestVersion);

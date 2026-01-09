@@ -1,5 +1,6 @@
 package org.paul8711gamezz.helpers;
 
+// used to store status of users (if they are muted and stuff)
 public class VCInfo {
     public boolean inVC;
     public boolean mute;
