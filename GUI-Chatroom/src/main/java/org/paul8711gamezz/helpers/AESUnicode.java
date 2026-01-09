@@ -13,11 +13,12 @@ import java.security.spec.KeySpec;
 import java.util.Base64;
 
 public class AESUnicode {
+    // i am not explaining this in detail i have no idea how this works (i stole this code from the internet)
 
-    // Encrypt any Unicode string
+    // encryption for unicode
     public static String encrypt(String str, String SALT, String KEY) {
         try {
-            byte[] iv = new byte[16]; // 16 bytes of zeros
+            byte[] iv = new byte[16];
             IvParameterSpec ivspec = new IvParameterSpec(iv);
 
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
@@ -29,14 +30,14 @@ public class AESUnicode {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
 
             byte[] encryptedBytes = cipher.doFinal(str.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(encryptedBytes); // Base64 safe for all characters
+            return Base64.getEncoder().encodeToString(encryptedBytes);
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    // Decrypt any Unicode string
+    // decryption also for unicode
     public static String decrypt(String str, String SALT, String KEY) {
         try {
             byte[] iv = new byte[16];
@@ -60,10 +61,10 @@ public class AESUnicode {
         return null;
     }
 
-    // ChaCha20-Poly1305
-    private static final int NONCE_LENGTH = 12; // 96-bit nonce
+    // ChaCha20-Poly1305 (i wrote this here because i thought it sounded funny
+    private static final int NONCE_LENGTH = 12;
 
-    // Encrypt bytes
+    // encryption BUT FOR BYTES
     public static byte[] encryptBytes(byte[] plaintext, String SALT, String KEY) {
         try {
             byte[] keyBytes = deriveKey(KEY, SALT);
@@ -78,7 +79,6 @@ public class AESUnicode {
 
             byte[] ciphertext = cipher.doFinal(plaintext);
 
-            // Prepend nonce for transmission
             ByteBuffer buffer = ByteBuffer.allocate(NONCE_LENGTH + ciphertext.length);
             buffer.put(nonce);
             buffer.put(ciphertext);
@@ -89,7 +89,7 @@ public class AESUnicode {
         return null;
     }
 
-    // Decrypt bytes
+    // and now: decryption BUT ALSO FOR BYTES
     public static byte[] decryptBytes(byte[] encrypted, String SALT, String KEY) {
         try {
             byte[] keyBytes = deriveKey(KEY, SALT);
@@ -112,7 +112,6 @@ public class AESUnicode {
         return null;
     }
 
-    // Simple 256-bit key derivation
     private static byte[] deriveKey(String KEY, String SALT) {
         byte[] keyBytes = new byte[32];
         byte[] input = (KEY + SALT).getBytes(StandardCharsets.UTF_8);
