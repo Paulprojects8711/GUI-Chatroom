@@ -2,15 +2,11 @@ package org.paul8711gamezz;
 
 import com.google.gson.JsonObject;
 import org.paul8711gamezz.helpers.ClientUIHandler;
-import org.paul8711gamezz.helpers.MicrophoneItem;
-import org.paul8711gamezz.helpers.SpeakerItem;
 
 import javax.sound.sampled.*;
 import java.io.IOException;
 import java.net.*;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Scanner;
 
 import static org.paul8711gamezz.helpers.AESUnicode.*;
@@ -38,6 +34,7 @@ public class UDPClient {
     public static AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, false);;
     public static boolean micAvailable;
     public static boolean speakerAvailable;
+    public static boolean loadedFromFile;
 
     public static ClientUIHandler uiHandler;
 
@@ -127,22 +124,23 @@ public class UDPClient {
         // mic
         DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
         Mixer.Info[] mixers = AudioSystem.getMixerInfo();
-        microphone = null;
-
-        for (Mixer.Info mixerInfo : mixers) {
-            Mixer mixer = AudioSystem.getMixer(mixerInfo);
-            try {
-                microphone = (TargetDataLine) mixer.getLine(micInfo);
-                microphone.open(format);
-                micAvailable = true;
-                break; // success
-            } catch (LineUnavailableException | IllegalArgumentException ignored) {
-                // try next mixer
-            }
-        }
 
         if (microphone == null) {
-            micAvailable = false;
+            for (Mixer.Info mixerInfo : mixers) {
+                Mixer mixer = AudioSystem.getMixer(mixerInfo);
+                try {
+                    microphone = (TargetDataLine) mixer.getLine(micInfo);
+                    microphone.open(format);
+                    micAvailable = true;
+                    break; // success
+                } catch (LineUnavailableException | IllegalArgumentException ignored) {
+                    // try next mixer
+                }
+            }
+
+            if (microphone == null) {
+                micAvailable = false;
+            }
         }
 
         // speaker
@@ -578,46 +576,5 @@ public class UDPClient {
         } catch (Exception ignored) {}
 
         handleDisconnect(reason);
-    }
-
-    public static List<SpeakerItem> getSpeakers() {
-        DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
-        Mixer.Info[] mixers = AudioSystem.getMixerInfo();
-        SourceDataLine speaker;
-
-        List<SpeakerItem> speakers = new ArrayList<>();
-
-        for (Mixer.Info mixerInfo : mixers) {
-            Mixer mixer = AudioSystem.getMixer(mixerInfo);
-            try {
-                speaker = (SourceDataLine) mixer.getLine(speakerInfo);
-                speaker.open(format);
-                speakers.add(new SpeakerItem(mixerInfo.getName(), mixerInfo));
-            } catch (LineUnavailableException | IllegalArgumentException ignored) {
-                // try next mixer
-            }
-        }
-
-        return speakers;
-    }
-    public static List<MicrophoneItem> getMicrophones() {
-        DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
-        Mixer.Info[] mixers = AudioSystem.getMixerInfo();
-        TargetDataLine microphone;
-
-        List<MicrophoneItem> microphones = new ArrayList<>();
-
-        for (Mixer.Info mixerInfo : mixers) {
-            Mixer mixer = AudioSystem.getMixer(mixerInfo);
-            try {
-                microphone = (TargetDataLine) mixer.getLine(micInfo);
-                microphone.open(format);
-                microphones.add(new MicrophoneItem(mixerInfo.getName(), mixerInfo));
-            } catch (LineUnavailableException | IllegalArgumentException ignored) {
-                // try next mixer
-            }
-        }
-
-        return microphones;
     }
 }

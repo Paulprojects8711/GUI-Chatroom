@@ -4,7 +4,10 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import org.paul8711gamezz.helpers.*;
+import org.paul8711gamezz.helpers.ClientUIHandler;
+import org.paul8711gamezz.helpers.ServerUIHandler;
+import org.paul8711gamezz.helpers.UpdateManager;
+import org.paul8711gamezz.helpers.VCInfo;
 
 import javax.swing.*;
 import java.awt.*;
@@ -90,7 +93,7 @@ public class GUI {
         selectScreen.add(descLabel);
 
         // spacing
-        selectScreen.add(Box.createVerticalStrut(50));
+        selectScreen.add(Box.createVerticalStrut(76));
 
         // join btn
         JButton joinButton1 = new JButton("Join");
@@ -104,15 +107,6 @@ public class GUI {
         JButton hostButton1 = new JButton("Host");
         hostButton1.setAlignmentX(Component.CENTER_ALIGNMENT);
         selectScreen.add(hostButton1);
-
-        // spacing
-        selectScreen.add(Box.createVerticalStrut(30));
-
-        // settings btn
-        JButton settingsButton = new JButton("Settings");
-        settingsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        settingsButton.setVisible(false);
-        selectScreen.add(settingsButton);
 
         String version = UpdateManager.getLocalVersion();
 
@@ -139,11 +133,6 @@ public class GUI {
         hostButton1.addActionListener(e -> {
             CardLayout cl = (CardLayout)(cards.getLayout());
             cl.show(cards, "serverConfig");
-        });
-
-        settingsButton.addActionListener(e -> {
-            CardLayout cl = (CardLayout)(cards.getLayout());
-            cl.show(cards, "settings");
         });
 
         // ===========================
@@ -650,63 +639,6 @@ public class GUI {
             } else {
                 JOptionPane.showMessageDialog(serverConfig, "Please enter a Port", "Invalid Port", JOptionPane.ERROR_MESSAGE);
             }
-        });
-
-
-        // ===========================
-        // ======== Settings =========
-        // ===========================
-        JPanel settings = new JPanel();
-        settings.setLayout(new BoxLayout(settings, BoxLayout.Y_AXIS)); // vertical layout
-
-        settings.add(createTopBar("Settings", backAction));
-
-        // spacing
-        settings.add(Box.createVerticalStrut(50)); // in px
-
-        // main container (vertical)
-        JPanel settingsPanel = new JPanel();
-        settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
-        settingsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        List<String> micList = new ArrayList<>();
-        micList.add("None");
-        for (MicrophoneItem item : UDPClient.getMicrophones()) {
-            micList.add(item.name);
-        }
-        String[] micChoices = micList.toArray(new String[0]);
-        JComboBox<String> micComboBox = new JComboBox<>(micChoices);
-        JPanel micDropdown = createDropdownRow("Microphone", micComboBox);
-        settingsPanel.add(micDropdown);
-
-        settingsPanel.add(Box.createVerticalStrut(10));
-
-        List<String> speakerList = new ArrayList<>();
-        speakerList.add("None");
-        for (SpeakerItem item : UDPClient.getSpeakers()) {
-            speakerList.add(item.name);
-        }
-        String[] speakerChoices = speakerList.toArray(new String[0]);
-        JComboBox<String> speakerComboBox = new JComboBox<>(speakerChoices);
-        JPanel speakerDropdown = createDropdownRow("Speaker", speakerComboBox);
-        settingsPanel.add(speakerDropdown);
-
-        settingsPanel.setMaximumSize(settingsPanel.getPreferredSize());
-
-        settings.add(settingsPanel);
-
-        settings.add(Box.createVerticalStrut(20));
-
-        // save btn
-        JButton saveButton = new JButton("Save");
-        saveButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        settings.add(saveButton);
-
-        cards.add(settings, "settings");
-
-        saveButton.addActionListener(e -> {
-            CardLayout cl = (CardLayout)(cards.getLayout());
-            cl.show(cards, "selectScreen");
         });
 
         // ===========================
