@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "org.paul8711gamezz"
-version = "1.4-SNAPSHOT"
+version = "1.4"
 
 repositories {
     mavenCentral()
