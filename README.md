@@ -8,3 +8,6 @@ An end-to-end encrypted Graphical User Interface Chatroom
 - Rooms without a custom password use a fixed default key, which provides minimal protection and should not be considered fully secure.
 - All messages are ephemeral and will be deleted when the server closes; no chat history is stored.
 - This chat application is intended for casual use with friends and is not designed for highly sensitive communications.
+
+### Python Version
+If anyone is interested, here is the same thing but in Python (work in progress, not done yet): [GUI-Chatroom-Python](https://github.com/Paulprojects8711/GUI-Chatroom-Python)
