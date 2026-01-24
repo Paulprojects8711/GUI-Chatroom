@@ -31,10 +31,9 @@ public class UDPClient {
     // audio stuff
     public static TargetDataLine microphone;
     public static SourceDataLine speaker;
-    public static AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, false);;
+    public static AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, false);
     public static boolean micAvailable;
     public static boolean speakerAvailable;
-    public static boolean loadedFromFile;
 
     public static ClientUIHandler uiHandler;
 
@@ -383,6 +382,16 @@ public class UDPClient {
             InetAddress serverAddress = InetAddress.getByName(serverIP);
             String message = type + "|" + msg;
             byte[] sendData = message.getBytes();
+
+            if (sendData.length > 1024) {
+                if (type.equals("chat")) {
+                    handleError("Message too long");
+                    return;
+                } else {
+                    handleError("Packet too big");
+                    return;
+                }
+            }
 
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverAddress, serverPort);
             clientSocket.send(sendPacket);
