@@ -199,7 +199,7 @@ public class UDPServer {
                         sendToSingle(serverSocket, clientID, "salt|" + UDPServer.SALT, lastSent);
                         broadcast(serverSocket, userMap, "join|" + "User " + userMap.get(clientID) + " joined");
                         broadcastUserList(serverSocket, userMap);
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     }
@@ -217,7 +217,7 @@ public class UDPServer {
                         vcStatus.remove(clientID);
                         broadcast(serverSocket, userMap, "leave|" + "User " + username + " left");
                         broadcastUserList(serverSocket, userMap);
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     }
@@ -230,7 +230,7 @@ public class UDPServer {
                         // puts the user in vc
                         vcStatus.put(clientID, new VCInfo(true, false, false));
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " joined Voice call");
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("leave")) {
@@ -239,19 +239,19 @@ public class UDPServer {
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " left Voice call");
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                     } else if (data.equals("mute")) {
                         // mutes/unmutes user
                         VCInfo info = vcStatus.get(clientID);
                         info.mute = !info.mute;
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("deaf")) {
                         // deafs/undeafs user
                         VCInfo info = vcStatus.get(clientID);
                         info.deaf = !info.deaf;
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     }
