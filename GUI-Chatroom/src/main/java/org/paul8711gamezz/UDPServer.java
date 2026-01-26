@@ -173,7 +173,7 @@ public class UDPServer {
                             broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
                             // broadcast lists and update own
                             broadcastUserList(serverSocket, userMap);
-                            broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                            broadcastVCUsers(serverSocket, userMap, vcStatus);
                             handleUserListUpdate(userMap);
                             handleVCListUpdate(vcStatus, userMap);
                         }
@@ -199,7 +199,7 @@ public class UDPServer {
                         sendToSingle(serverSocket, clientID, "salt|" + UDPServer.SALT, lastSent);
                         broadcast(serverSocket, userMap, "join|" + "User " + userMap.get(clientID) + " joined");
                         broadcastUserList(serverSocket, userMap);
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     }
@@ -217,7 +217,7 @@ public class UDPServer {
                         vcStatus.remove(clientID);
                         broadcast(serverSocket, userMap, "leave|" + "User " + username + " left");
                         broadcastUserList(serverSocket, userMap);
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     }
@@ -230,7 +230,7 @@ public class UDPServer {
                         // puts the user in vc
                         vcStatus.put(clientID, new VCInfo(true, false, false));
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " joined Voice call");
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("leave")) {
@@ -239,19 +239,19 @@ public class UDPServer {
                         broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " left Voice call");
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                     } else if (data.equals("mute")) {
                         // mutes/unmutes user
                         VCInfo info = vcStatus.get(clientID);
                         info.mute = !info.mute;
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("deaf")) {
                         // deafs/undeafs user
                         VCInfo info = vcStatus.get(clientID);
                         info.deaf = !info.deaf;
-                        broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                        broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     }
@@ -288,7 +288,7 @@ public class UDPServer {
             }
         }
     }
-    public static void broadcastVCUsers(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, VCInfo> vcStatus, Map<String, String> lastSent) throws IOException {
+    public static void broadcastVCUsers(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, VCInfo> vcStatus) throws IOException {
         // broadcasts the users who are in vc with their "status" (mute and deaf) as json
         Gson gson = new Gson();
 
@@ -311,10 +311,8 @@ public class UDPServer {
         String json = gson.toJson(vcList);
         String message = "vcusers|" + json;
 
-        // send to everyone who is in vc
-        for (String clientID : userMap.keySet()) {
-            sendToSingle(serverSocket, clientID, message, lastSent);
-        }
+        // send to everyone
+        broadcast(serverSocket, userMap, message);
     }
     public static void broadcastUserList(DatagramSocket serverSocket, Map<String, String> userMap) throws IOException {
         // broadcasts the list of all users as json (auto escaped)
