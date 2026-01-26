@@ -173,7 +173,7 @@ public class UDPServer {
                             broadcast(serverSocket, userMap, "join|" + "User " + data + " joined");
                             // broadcast lists and update own
                             broadcastUserList(serverSocket, userMap);
-                            broadcastVCUsers(serverSocket, userMap, vcStatus, lastSent);
+                            broadcastVCUsers(serverSocket, userMap, vcStatus);
                             handleUserListUpdate(userMap);
                             handleVCListUpdate(vcStatus, userMap);
                         }
@@ -288,7 +288,7 @@ public class UDPServer {
             }
         }
     }
-    public static void broadcastVCUsers(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, VCInfo> vcStatus, Map<String, String> lastSent) throws IOException {
+    public static void broadcastVCUsers(DatagramSocket serverSocket, Map<String, String> userMap, Map<String, VCInfo> vcStatus) throws IOException {
         // broadcasts the users who are in vc with their "status" (mute and deaf) as json
         Gson gson = new Gson();
 
@@ -311,10 +311,8 @@ public class UDPServer {
         String json = gson.toJson(vcList);
         String message = "vcusers|" + json;
 
-        // send to everyone who is in vc
-        for (String clientID : userMap.keySet()) {
-            sendToSingle(serverSocket, clientID, message, lastSent);
-        }
+        // send to everyone
+        broadcast(serverSocket, userMap, message);
     }
     public static void broadcastUserList(DatagramSocket serverSocket, Map<String, String> userMap) throws IOException {
         // broadcasts the list of all users as json (auto escaped)
