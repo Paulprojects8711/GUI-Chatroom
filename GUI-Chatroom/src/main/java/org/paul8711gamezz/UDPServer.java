@@ -118,6 +118,7 @@ public class UDPServer {
                                     handleVCListUpdate(vcStatus, userMap);
                                     broadcast(serverSocket, userMap, "leave|" + username + " disconnected (timeout)");
                                     broadcastUserList(serverSocket, userMap);
+                                    broadcastVCUsers(serverSocket, userMap, vcStatus);
                                 }
                             }
                         }
