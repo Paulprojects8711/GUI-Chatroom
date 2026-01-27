@@ -301,7 +301,6 @@ public class UDPServer {
             if (info.inVC) {
                 Map<String, Object> obj = new HashMap<>();
                 obj.put("username", userMap.get(clientID)); // actual username
-                obj.put("inVC", info.inVC);
                 obj.put("mute", info.mute);
                 obj.put("deaf", info.deaf);
                 vcList.add(obj);
