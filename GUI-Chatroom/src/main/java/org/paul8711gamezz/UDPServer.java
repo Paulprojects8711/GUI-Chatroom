@@ -229,14 +229,14 @@ public class UDPServer {
                     if (data.equals("join")) {
                         // puts the user in vc
                         vcStatus.put(clientID, new VCInfo(true, false, false));
-                        broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " joined Voice call");
+                        broadcast(serverSocket, userMap, "info|User " + userMap.get(clientID) + " joined Voice call");
                         broadcastVCUsers(serverSocket, userMap, vcStatus);
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                     } else if (data.equals("leave")) {
                         // removes the user from vc (sets inVC to false)
                         vcStatus.put(clientID, new VCInfo(false, false, false));
-                        broadcast(serverSocket, userMap, "User " + userMap.get(clientID) + " left Voice call");
+                        broadcast(serverSocket, userMap, "info|User " + userMap.get(clientID) + " left Voice call");
                         handleUserListUpdate(userMap);
                         handleVCListUpdate(vcStatus, userMap);
                         broadcastVCUsers(serverSocket, userMap, vcStatus);
