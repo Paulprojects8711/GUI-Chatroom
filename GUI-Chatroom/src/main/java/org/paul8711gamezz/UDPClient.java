@@ -473,6 +473,9 @@ public class UDPClient {
                     // updates the normal user list in the gui
                     handleUsersUpdate(data);
                     return null;
+                } else if (type.equals("info")) {
+                    handleMessage(data);
+                    return null;
                 }
                 return data;
             }
