@@ -10,4 +10,4 @@ An end-to-end encrypted Graphical User Interface Chatroom
 - This chat application is intended for casual use with friends and is not designed for highly sensitive communications.
 
 ### Python Version
-If anyone is interested, here is the same thing but in Python (work in progress, not done yet): [GUI-Chatroom-Python](https://github.com/Paulprojects8711/GUI-Chatroom-Python)
+If anyone is interested, here is the same thing but in Python: [GUI-Chatroom-Python](https://github.com/Paulprojects8711/GUI-Chatroom-Python)
